@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -7,13 +7,28 @@ import {
   Box,
   useTheme,
   Tooltip,
+  Badge,
+  Avatar,
+  Menu,
+  MenuItem,
+  Divider,
+  ListItemIcon,
+  alpha,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import { Brightness4 } from '@mui/icons-material';
-import { Brightness7 } from '@mui/icons-material';
-import { Notifications } from '@mui/icons-material';
-import { Person } from '@mui/icons-material';
+import { 
+  Brightness4,
+  Brightness7,
+  Notifications,
+  Person,
+  Settings,
+  Logout,
+  AccountCircle,
+  NotificationsActive,
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+
 const logoLight = new URL('../../assets/icon light background.png', import.meta.url).href;
 const logoDark = new URL('../../assets/Icon dark background.png', import.meta.url).href;
 
@@ -25,28 +40,46 @@ interface TopbarProps {
 const Topbar: React.FC<TopbarProps> = ({ onMenuClick, onThemeToggle }) => {
   const navigate = useNavigate();
   const theme = useTheme();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
   const currentLogo = theme.palette.mode === 'dark' ? logoDark : logoLight;
 
-  // Update favicon based on theme
-  React.useEffect(() => {
-    const favicon = document.querySelector('link[rel="icon"]');
-    if (favicon) {
-      favicon.setAttribute('href', currentLogo);
-    }
-  }, [theme.palette.mode, currentLogo]);
+  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleNotificationMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setNotificationAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setNotificationAnchorEl(null);
+  };
 
   const handleLogout = () => {
-    // Add logout logic here
+    handleMenuClose();
     navigate('/login');
   };
+
+  const notifications = [
+    { id: 1, message: "Equipment maintenance due", type: "warning" },
+    { id: 2, message: "Production target achieved", type: "success" },
+    { id: 3, message: "New safety protocol update", type: "info" },
+  ];
 
   return (
     <AppBar
       position="fixed"
       sx={{
         zIndex: (theme) => theme.zIndex.drawer + 1,
-        transition: 'background-color 0.3s ease',
-        backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#1976d2',
+        background: theme.palette.mode === 'dark'
+          ? 'linear-gradient(145deg, #1e1e1e, #2d2d2d)'
+          : 'linear-gradient(145deg, #1976d2, #1565c0)',
+        backdropFilter: 'blur(10px)',
+        boxShadow: theme.palette.mode === 'dark'
+          ? '0 8px 32px rgba(0, 0, 0, 0.3)'
+          : '0 8px 32px rgba(25, 118, 210, 0.3)',
       }}
     >
       <Toolbar>
@@ -55,59 +88,202 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick, onThemeToggle }) => {
           aria-label="open drawer"
           onClick={onMenuClick}
           edge="start"
-          sx={{ mr: 2 }}
+          sx={{
+            mr: 2,
+            '&:hover': {
+              backgroundColor: alpha(theme.palette.common.white, 0.1),
+              transform: 'scale(1.1)',
+            },
+            transition: 'all 0.2s',
+          }}
         >
           <MenuIcon />
         </IconButton>
         
-        <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-          <Box 
-            component="div" 
-            onClick={() => navigate('/dashboard')} 
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              flexGrow: 1,
               cursor: 'pointer',
-              '&:hover': {
-                opacity: 0.8
-              }
+              '&:hover img': {
+                transform: 'scale(1.05)',
+              },
             }}
+            onClick={() => navigate('/dashboard')}
           >
-            <img 
-              src={currentLogo} 
-              alt="Mining Operations Logo" 
-              style={{ 
-                height: '40px', 
+            <img
+              src={currentLogo}
+              alt="Mining Operations Logo"
+              style={{
+                height: '40px',
                 width: '40px',
                 marginRight: '12px',
-                transition: 'filter 0.3s ease'
-              }} 
+                transition: 'transform 0.3s ease',
+              }}
             />
-            <Typography variant="h6" noWrap component="div">
+            <Typography
+              variant="h6"
+              noWrap
+              component="div"
+              sx={{
+                background: theme.palette.mode === 'dark'
+                  ? 'linear-gradient(45deg, #fff, #f5f5f5)'
+                  : 'linear-gradient(45deg, #fff, #e3f2fd)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                fontWeight: 600,
+              }}
+            >
               Mining Operations Dashboard
             </Typography>
           </Box>
-        </Box>
+        </motion.div>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Tooltip title={`Switch to ${theme.palette.mode === 'dark' ? 'light' : 'dark'} mode`}>
-            <IconButton color="inherit" onClick={onThemeToggle}>
+            <IconButton
+              color="inherit"
+              onClick={onThemeToggle}
+              sx={{
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.common.white, 0.1),
+                  transform: 'rotate(180deg)',
+                },
+                transition: 'all 0.3s',
+              }}
+            >
               {theme.palette.mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
             </IconButton>
           </Tooltip>
 
           <Tooltip title="Notifications">
-            <IconButton color="inherit">
-              <Notifications />
+            <IconButton
+              color="inherit"
+              onClick={handleNotificationMenuOpen}
+              sx={{
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.common.white, 0.1),
+                  transform: 'scale(1.1)',
+                },
+                transition: 'all 0.2s',
+              }}
+            >
+              <Badge badgeContent={notifications.length} color="error">
+                <NotificationsActive />
+              </Badge>
             </IconButton>
           </Tooltip>
 
-          <Tooltip title="Profile">
-            <IconButton color="inherit" onClick={handleLogout}>
-              <Person />
+          <Tooltip title="Account settings">
+            <IconButton
+              onClick={handleProfileMenuOpen}
+              sx={{
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.common.white, 0.1),
+                },
+              }}
+            >
+              <Avatar
+                sx={{
+                  width: 32,
+                  height: 32,
+                  bgcolor: theme.palette.primary.light,
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    transform: 'scale(1.1)',
+                  },
+                }}
+              >
+                <Person />
+              </Avatar>
             </IconButton>
           </Tooltip>
         </Box>
+
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+          onClick={handleMenuClose}
+          PaperProps={{
+            sx: {
+              mt: 1.5,
+              background: theme.palette.mode === 'dark'
+                ? 'linear-gradient(145deg, #1e1e1e, #2d2d2d)'
+                : 'linear-gradient(145deg, #fff, #f5f5f5)',
+              boxShadow: theme.palette.mode === 'dark'
+                ? '0 8px 32px rgba(0, 0, 0, 0.3)'
+                : '0 8px 32px rgba(0, 0, 0, 0.1)',
+              minWidth: 200,
+            },
+          }}
+          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        >
+          <MenuItem onClick={() => navigate('/profile')}>
+            <ListItemIcon>
+              <AccountCircle fontSize="small" />
+            </ListItemIcon>
+            Profile
+          </MenuItem>
+          <MenuItem onClick={() => navigate('/settings')}>
+            <ListItemIcon>
+              <Settings fontSize="small" />
+            </ListItemIcon>
+            Settings
+          </MenuItem>
+          <Divider />
+          <MenuItem onClick={handleLogout}>
+            <ListItemIcon>
+              <Logout fontSize="small" />
+            </ListItemIcon>
+            Logout
+          </MenuItem>
+        </Menu>
+
+        <Menu
+          anchorEl={notificationAnchorEl}
+          open={Boolean(notificationAnchorEl)}
+          onClose={handleMenuClose}
+          PaperProps={{
+            sx: {
+              mt: 1.5,
+              background: theme.palette.mode === 'dark'
+                ? 'linear-gradient(145deg, #1e1e1e, #2d2d2d)'
+                : 'linear-gradient(145deg, #fff, #f5f5f5)',
+              boxShadow: theme.palette.mode === 'dark'
+                ? '0 8px 32px rgba(0, 0, 0, 0.3)'
+                : '0 8px 32px rgba(0, 0, 0, 0.1)',
+              minWidth: 280,
+            },
+          }}
+          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        >
+          {notifications.map((notification) => (
+            <MenuItem key={notification.id} onClick={handleMenuClose}>
+              <ListItemIcon>
+                <NotificationsActive
+                  sx={{
+                    color:
+                      notification.type === 'warning'
+                        ? 'warning.main'
+                        : notification.type === 'success'
+                        ? 'success.main'
+                        : 'info.main',
+                  }}
+                />
+              </ListItemIcon>
+              <Typography variant="body2">{notification.message}</Typography>
+            </MenuItem>
+          ))}
+        </Menu>
       </Toolbar>
     </AppBar>
   );
