@@ -98,66 +98,106 @@ const Dashboard: React.FC = () => {
           <CircularProgress />
         </Box>
       ) : dashboardData ? (
-        <Grid container spacing={2} sx={{ width: '100%' }}>
-          {/* First Row - Gold Production (100% width) */}
-          <Grid item xs={12} sx={{ 
-            width: '100%',
-            '& > div': { 
-              width: '100%',
-              '& > div': {
-                width: '100%'
-              }
-            } 
-          }}>
-            <Box sx={{ width: '100%', display: 'flex' }}>
-              <GoldProductionWidget />
-            </Box>
+        <Grid container spacing={2} sx={{ width: '100%', margin: 0 }}>
+          {/* Gold Production - Full Width (Always on top) */}
+          {widgets.find(w => w.id === 'gold-production')?.isVisible && (
+            <Grid item xs={12} sx={{ padding: '16px 0' }}>
+              <Box 
+                sx={{ 
+                  width: '100%', 
+                  '& > *': { 
+                    width: '100%',
+                    '& .MuiPaper-root': {
+                      width: '100%'
+                    }
+                  }
+                }}
+              >
+                <GoldProductionWidget />
+              </Box>
+            </Grid>
+          )}
+
+          {/* First Row - Energy (50%) and Safety (50%) */}
+          <Grid container item spacing={2}>
+            {widgets.find(w => w.id === 'energy')?.isVisible && (
+              <Grid item xs={12} md={6} sx={{ display: 'flex' }}>
+                <Box sx={{ 
+                  width: '100%', 
+                  height: '500px',
+                  '& > div': {
+                    height: '100%',
+                    width: '100%'
+                  }
+                }}>
+                  <EnergyWidget data={dashboardData.energy} loading={loading} />
+                </Box>
+              </Grid>
+            )}
+            {widgets.find(w => w.id === 'safety')?.isVisible && (
+              <Grid item xs={12} md={6} sx={{ display: 'flex' }}>
+                <Box sx={{ 
+                  width: '100%', 
+                  height: '500px',
+                  '& > div': {
+                    height: '100%',
+                    width: '100%'
+                  }
+                }}>
+                  <SafetyWidget data={dashboardData.safety} loading={loading} />
+                </Box>
+              </Grid>
+            )}
           </Grid>
 
-          {/* Second Row - Energy (100% width) */}
-          <Grid item xs={12}>
-            <Box sx={{ width: '100%', display: 'flex' }}>
-              <EnergyWidget data={dashboardData.energy} loading={loading} />
-            </Box>
+          {/* Second Row - Equipment (33%), Chemicals (33%), and Explosives (33%) */}
+          <Grid container item spacing={2}>
+            {widgets.find(w => w.id === 'equipment')?.isVisible && (
+              <Grid item xs={12} md={4}>
+                <Box sx={{ width: '100%', height: '100%', display: 'flex' }}>
+                  <EquipmentWidget />
+                </Box>
+              </Grid>
+            )}
+            {widgets.find(w => w.id === 'chemicals')?.isVisible && (
+              <Grid item xs={12} md={4}>
+                <Box sx={{ width: '100%', height: '100%', display: 'flex' }}>
+                  <ChemicalsWidget data={dashboardData.chemicals} loading={loading} />
+                </Box>
+              </Grid>
+            )}
+            {widgets.find(w => w.id === 'explosives')?.isVisible && (
+              <Grid item xs={12} md={4}>
+                <Box sx={{ width: '100%', height: '100%', display: 'flex' }}>
+                  <ExplosivesWidget data={dashboardData.explosives} loading={loading} />
+                </Box>
+              </Grid>
+            )}
           </Grid>
 
-          {/* Third Row - Safety Overview, Chemical Usage (50% each) */}
-          <Grid item xs={12} md={6}>
-            <Box sx={{ width: '100%', display: 'flex' }}>
-              <SafetyWidget data={dashboardData.safety} loading={loading} />
-            </Box>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Box sx={{ width: '100%', display: 'flex' }}>
-              <ChemicalsWidget data={dashboardData.chemicals} loading={loading} />
-            </Box>
-          </Grid>
-
-          {/* Fourth Row - Remaining Widgets (2 columns on medium, 3 columns on large) */}
-          <Grid item xs={12} md={6} lg={4}>
-            <Box sx={{ width: '100%', display: 'flex' }}>
-              <EquipmentWidget />
-            </Box>
-          </Grid>
-          <Grid item xs={12} md={6} lg={4}>
-            <Box sx={{ width: '100%', display: 'flex' }}>
-              <ExplosivesWidget data={dashboardData.explosives} loading={loading} />
-            </Box>
-          </Grid>
-          <Grid item xs={12} md={6} lg={4}>
-            <Box sx={{ width: '100%', display: 'flex' }}>
-              <ExpensesWidget data={dashboardData.expenses} loading={loading} />
-            </Box>
-          </Grid>
-          <Grid item xs={12} md={6} lg={4}>
-            <Box sx={{ width: '100%', display: 'flex' }}>
-              <LaborWidget data={dashboardData.labor} loading={loading} />
-            </Box>
-          </Grid>
-          <Grid item xs={12} md={6} lg={4}>
-            <Box sx={{ width: '100%', display: 'flex' }}>
-              <EnvironmentalWidget data={dashboardData.environmental} loading={loading} />
-            </Box>
+          {/* Third Row - Labor (33%), Environmental (33%), and Expenses (33%) */}
+          <Grid container item spacing={2}>
+            {widgets.find(w => w.id === 'labor')?.isVisible && (
+              <Grid item xs={12} md={4}>
+                <Box sx={{ width: '100%', height: '100%', display: 'flex' }}>
+                  <LaborWidget data={dashboardData.labor} loading={loading} />
+                </Box>
+              </Grid>
+            )}
+            {widgets.find(w => w.id === 'environmental')?.isVisible && (
+              <Grid item xs={12} md={4}>
+                <Box sx={{ width: '100%', height: '100%', display: 'flex' }}>
+                  <EnvironmentalWidget data={dashboardData.environmental} loading={loading} />
+                </Box>
+              </Grid>
+            )}
+            {widgets.find(w => w.id === 'expenses')?.isVisible && (
+              <Grid item xs={12} md={4}>
+                <Box sx={{ width: '100%', height: '100%', display: 'flex' }}>
+                  <ExpensesWidget data={dashboardData.expenses} loading={loading} />
+                </Box>
+              </Grid>
+            )}
           </Grid>
         </Grid>
       ) : null}

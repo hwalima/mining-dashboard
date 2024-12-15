@@ -7,11 +7,16 @@ import {
   Email,
   Phone,
   LocationOn,
+  Language
 } from '@mui/icons-material';
+
+const logoLight = new URL('../../assets/icon light background.png', import.meta.url).href;
+const logoDark = new URL('../../assets/Icon dark background.png', import.meta.url).href;
 
 const Footer: React.FC = () => {
   const theme = useTheme();
   const currentYear = new Date().getFullYear();
+  const currentLogo = theme.palette.mode === 'dark' ? logoDark : logoLight;
 
   const socialLinks = [
     { icon: <Facebook />, url: 'https://facebook.com/hwalimadigital', tooltip: 'Follow us on Facebook' },
@@ -33,7 +38,7 @@ const Footer: React.FC = () => {
       items: [
         { text: 'About Us', link: 'https://www.hwalima.digital/about' },
         { text: 'Services', link: 'https://www.hwalima.digital/services' },
-        { text: 'Support', link: 'https://www.hwalima.digital/support' },
+        { text: 'Support', link: 'https://www.hwalima.digital/contacts/' },
       ],
     },
     {
@@ -50,13 +55,21 @@ const Footer: React.FC = () => {
     <Box
       component="footer"
       sx={{
-        width: '100%',
+        width: '100vw',
+        maxWidth: '100%',
         background: theme.palette.mode === 'dark'
           ? 'linear-gradient(145deg, #1e1e1e, #2d2d2d)'
           : 'linear-gradient(145deg, #f8f9fa, #ffffff)',
         borderTop: `1px solid ${theme.palette.divider}`,
         mt: 'auto',
         position: 'relative',
+        left: 0,
+        right: 0,
+        flexShrink: 0,
+        transform: 'translateX(0)',
+        boxShadow: theme.palette.mode === 'dark'
+          ? '0 -4px 12px rgba(0,0,0,0.2)'
+          : '0 -4px 12px rgba(0,0,0,0.05)',
         '&::before': {
           content: '""',
           position: 'absolute',
@@ -74,13 +87,44 @@ const Footer: React.FC = () => {
         sx={{
           py: 4,
           px: { xs: 2, sm: 4 },
-          maxWidth: 'lg',
+          maxWidth: '100%',
           margin: '0 auto',
+          width: '100%'
         }}
       >
         <Grid container spacing={4}>
+          <Grid item xs={12} md={3} sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'center', md: 'flex-start' } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <img
+                src={currentLogo}
+                alt="Hwalima Digital Logo"
+                style={{
+                  height: '40px',
+                  marginRight: '12px',
+                  filter: theme.palette.mode === 'dark' ? 'brightness(1)' : 'brightness(1)',
+                }}
+              />
+            </Box>
+            <Link 
+              href="https://www.hwalima.digital" 
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                color: theme.palette.primary.main,
+                textDecoration: 'none',
+                '&:hover': {
+                  textDecoration: 'underline'
+                }
+              }}
+            >
+              <Language sx={{ mr: 1 }} />
+              www.hwalima.digital
+            </Link>
+          </Grid>
           {footerSections.map((section) => (
-            <Grid item xs={12} sm={6} md={4} key={section.title}>
+            <Grid item xs={12} sm={6} md={3} key={section.title}>
               <Typography
                 variant="h6"
                 sx={{
@@ -141,54 +185,46 @@ const Footer: React.FC = () => {
 
         <Box
           sx={{
-            mt: 4,
-            pt: 2,
+            pt: 3,
+            mt: 3,
             borderTop: `1px solid ${theme.palette.divider}`,
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 2,
+            textAlign: 'center',
+            width: '100%'
           }}
         >
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{
-              textAlign: { xs: 'center', sm: 'left' },
-            }}
-          >
+          <Typography variant="body2" color="text.secondary">
             {currentYear} Hwalima Digital. All rights reserved.
           </Typography>
+        </Box>
 
-          <Box
-            sx={{
-              display: 'flex',
-              gap: 1,
-              justifyContent: 'center',
-            }}
-          >
-            {socialLinks.map((social, index) => (
-              <Tooltip key={index} title={social.tooltip}>
-                <IconButton
-                  href={social.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  size="small"
-                  sx={{
-                    color: theme.palette.text.secondary,
-                    '&:hover': {
-                      color: theme.palette.primary.main,
-                      transform: 'translateY(-2px)',
-                    },
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  {social.icon}
-                </IconButton>
-              </Tooltip>
-            ))}
-          </Box>
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 1,
+            justifyContent: 'center',
+            mt: 2
+          }}
+        >
+          {socialLinks.map((social, index) => (
+            <Tooltip key={index} title={social.tooltip}>
+              <IconButton
+                href={social.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                size="small"
+                sx={{
+                  color: theme.palette.text.secondary,
+                  '&:hover': {
+                    color: theme.palette.primary.main,
+                    transform: 'translateY(-2px)',
+                  },
+                  transition: 'all 0.2s',
+                }}
+              >
+                {social.icon}
+              </IconButton>
+            </Tooltip>
+          ))}
         </Box>
       </Box>
     </Box>

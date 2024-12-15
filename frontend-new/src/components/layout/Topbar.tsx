@@ -82,128 +82,61 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick, onThemeToggle }) => {
           : '0 8px 32px rgba(25, 118, 210, 0.3)',
       }}
     >
-      <Toolbar>
-        <IconButton
-          color="inherit"
-          aria-label="open drawer"
-          onClick={onMenuClick}
-          edge="start"
-          sx={{
-            mr: 2,
-            '&:hover': {
-              backgroundColor: alpha(theme.palette.common.white, 0.1),
-              transform: 'scale(1.1)',
-            },
-            transition: 'all 0.2s',
-          }}
-        >
-          <MenuIcon />
-        </IconButton>
-        
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Box
+      <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <IconButton
+            color="inherit"
+            aria-label="open drawer"
+            onClick={onMenuClick}
+            edge="start"
             sx={{
-              display: 'flex',
-              alignItems: 'center',
-              flexGrow: 1,
-              cursor: 'pointer',
-              '&:hover img': {
-                transform: 'scale(1.05)',
+              mr: 2,
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.common.white, 0.1),
+                transform: 'scale(1.1)',
               },
+              transition: 'all 0.2s',
             }}
-            onClick={() => navigate('/dashboard')}
           >
+            <MenuIcon />
+          </IconButton>
+
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <img
               src={currentLogo}
-              alt="Mining Operations Logo"
+              alt="Logo"
               style={{
-                height: '40px',
-                width: '40px',
+                height: '32px',
                 marginRight: '12px',
-                transition: 'transform 0.3s ease',
+                filter: theme.palette.mode === 'dark' ? 'brightness(1)' : 'brightness(1)',
               }}
             />
-            <Typography
-              variant="h6"
-              noWrap
-              component="div"
-              sx={{
-                background: theme.palette.mode === 'dark'
-                  ? 'linear-gradient(45deg, #fff, #f5f5f5)'
-                  : 'linear-gradient(45deg, #fff, #e3f2fd)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                fontWeight: 600,
-              }}
-            >
+            <Typography variant="h6" noWrap component="div">
               Mining Operations Dashboard
             </Typography>
           </Box>
-        </motion.div>
+        </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Tooltip title={`Switch to ${theme.palette.mode === 'dark' ? 'light' : 'dark'} mode`}>
-            <IconButton
-              color="inherit"
-              onClick={onThemeToggle}
-              sx={{
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.common.white, 0.1),
-                  transform: 'rotate(180deg)',
-                },
-                transition: 'all 0.3s',
-              }}
-            >
-              {theme.palette.mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
-            </IconButton>
-          </Tooltip>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
+          <IconButton color="inherit" onClick={onThemeToggle}>
+            {theme.palette.mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+          </IconButton>
 
-          <Tooltip title="Notifications">
-            <IconButton
-              color="inherit"
-              onClick={handleNotificationMenuOpen}
-              sx={{
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.common.white, 0.1),
-                  transform: 'scale(1.1)',
-                },
-                transition: 'all 0.2s',
-              }}
-            >
-              <Badge badgeContent={notifications.length} color="error">
-                <NotificationsActive />
-              </Badge>
-            </IconButton>
-          </Tooltip>
+          <IconButton color="inherit" onClick={handleNotificationMenuOpen}>
+            <Badge badgeContent={notifications.length} color="error">
+              <Notifications />
+            </Badge>
+          </IconButton>
 
-          <Tooltip title="Account settings">
-            <IconButton
-              onClick={handleProfileMenuOpen}
-              sx={{
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.common.white, 0.1),
-                },
-              }}
-            >
-              <Avatar
-                sx={{
-                  width: 32,
-                  height: 32,
-                  bgcolor: theme.palette.primary.light,
-                  transition: 'all 0.2s',
-                  '&:hover': {
-                    transform: 'scale(1.1)',
-                  },
-                }}
-              >
-                <Person />
-              </Avatar>
-            </IconButton>
-          </Tooltip>
+          <IconButton
+            edge="end"
+            color="inherit"
+            onClick={handleProfileMenuOpen}
+          >
+            <Avatar sx={{ width: 32, height: 32, bgcolor: theme.palette.primary.dark }}>
+              <AccountCircle />
+            </Avatar>
+          </IconButton>
         </Box>
 
         <Menu

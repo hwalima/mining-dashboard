@@ -122,103 +122,118 @@ const SafetyWidget: React.FC<SafetyWidgetProps> = ({
       }));
   }, [filteredData]);
 
-  if (loading) {
-    return (
-      <Paper elevation={3} sx={cardStyle}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-          <CircularProgress />
-        </Box>
-      </Paper>
-    );
-  }
+  const severityData = useMemo(() => {
+    if (!filteredData?.summary) return [];
+
+    return Object.entries(filteredData.summary.severity_breakdown)
+      .map(([name, value]) => ({
+        name,
+        value,
+      }));
+  }, [filteredData]);
 
   return (
-    <Paper elevation={3} sx={cardStyle}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <HealthAndSafetyIcon sx={{ color: theme.palette.primary.main }} />
-        <Typography variant="h6" component="h2">Safety Overview</Typography>
+    <Paper
+      elevation={0}
+      sx={{
+        p: 3,
+        height: '100%',
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        background: theme.palette.mode === 'dark'
+          ? 'linear-gradient(145deg, #1e1e1e, #2d2d2d)'
+          : 'linear-gradient(145deg, #f8f9fa, #ffffff)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '16px',
+        border: `1px solid ${theme.palette.divider}`,
+        overflow: 'hidden'
+      }}
+    >
+      <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <HealthAndSafetyIcon color="primary" />
+        <Typography variant="h6" component="h2">
+          Safety Overview
+        </Typography>
       </Box>
 
-      {/* Main Stats Grid */}
-      <Grid container spacing={2}>
-        {/* Days Without Incidents */}
-        <Grid item xs={12} md={6}>
-          <Box sx={statBoxStyle}>
-            <CheckCircleIcon sx={{ fontSize: 40, color: COLORS.low, mb: 1 }} />
-            <Typography variant="h3" sx={{ color: COLORS.low, fontWeight: 'bold' }}>
-              {filteredData?.summary?.days_without_incident || 0}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Days Without Incidents
-            </Typography>
-          </Box>
-        </Grid>
-
-        {/* Severity Breakdown */}
-        <Grid item xs={12} md={6}>
-          <Grid container spacing={1}>
-            <Grid item xs={4}>
-              <Box sx={severityBoxStyle(COLORS.low)}>
-                <InfoIcon sx={{ color: COLORS.low }} />
-                <Typography variant="h6" sx={{ color: COLORS.low }}>
-                  {filteredData?.summary?.severity_breakdown?.low || 0}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+          <CircularProgress />
+        </Box>
+      ) : !data ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+          <Typography color="error">No safety data available</Typography>
+        </Box>
+      ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, width: '100%' }}>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12} sm={6}>
+              <Box sx={{ 
+                p: 2, 
+                borderRadius: 1, 
+                bgcolor: theme.palette.mode === 'dark' ? alpha('#000', 0.2) : alpha('#fff', 0.9),
+                border: `1px solid ${theme.palette.divider}`,
+              }}>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                  <CheckCircleIcon color="success" />
+                  <Typography variant="body2" color="text.secondary">
+                    Days Without Incident
+                  </Typography>
+                </Stack>
+                <Typography variant="h4" sx={{ color: theme.palette.success.main }}>
+                  {filteredData?.summary.days_without_incident}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">Low</Typography>
               </Box>
             </Grid>
-            <Grid item xs={4}>
-              <Box sx={severityBoxStyle(COLORS.medium)}>
-                <WarningIcon sx={{ color: COLORS.medium }} />
-                <Typography variant="h6" sx={{ color: COLORS.medium }}>
-                  {filteredData?.summary?.severity_breakdown?.medium || 0}
+            <Grid item xs={12} sm={6}>
+              <Box sx={{ 
+                p: 2, 
+                borderRadius: 1, 
+                bgcolor: theme.palette.mode === 'dark' ? alpha('#000', 0.2) : alpha('#fff', 0.9),
+                border: `1px solid ${theme.palette.divider}`,
+              }}>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                  <WarningIcon color="warning" />
+                  <Typography variant="body2" color="text.secondary">
+                    Total Incidents
+                  </Typography>
+                </Stack>
+                <Typography variant="h4" sx={{ color: theme.palette.warning.main }}>
+                  {filteredData?.summary.total_incidents}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">Medium</Typography>
-              </Box>
-            </Grid>
-            <Grid item xs={4}>
-              <Box sx={severityBoxStyle(COLORS.critical)}>
-                <ErrorIcon sx={{ color: COLORS.critical }} />
-                <Typography variant="h6" sx={{ color: COLORS.critical }}>
-                  {filteredData?.summary?.severity_breakdown?.high || 0}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">High</Typography>
               </Box>
             </Grid>
           </Grid>
-        </Grid>
 
-        {/* Incident Type Distribution */}
-        <Grid item xs={12}>
-          <Box sx={{ 
-            backgroundColor: alpha(theme.palette.background.paper, 0.1),
-            borderRadius: '12px',
-            p: 2,
-            height: '300px'
-          }}>
-            <Typography variant="subtitle1" sx={{ mb: 2 }}>Incident Distribution</Typography>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+          <Box sx={{ flex: 1, minHeight: 0, position: 'relative' }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Severity Breakdown
+            </Typography>
+            <Box sx={{ position: 'absolute', top: 24, left: 0, right: 0, bottom: 0 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={severityData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {severityData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[entry.name as keyof typeof COLORS]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </Box>
           </Box>
-        </Grid>
-      </Grid>
+        </Box>
+      )}
     </Paper>
   );
 };

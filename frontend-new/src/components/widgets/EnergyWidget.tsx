@@ -1,182 +1,211 @@
 import React from 'react';
+import { useTheme, alpha } from '@mui/material/styles';
 import {
+  Box,
   Paper,
   Typography,
-  Box,
-  Grid,
   CircularProgress,
   Alert,
-  useTheme,
+  Grid,
+  Stack,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
+import BoltIcon from '@mui/icons-material/Bolt';
+import LocalGasStationIcon from '@mui/icons-material/LocalGasStation';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
-import { format } from 'date-fns';
-import { formatNumber } from '../../utils/formatters';
-import TrendIndicator from '../common/TrendIndicator';
-import BoltIcon from '@mui/icons-material/Bolt';
-import LocalGasStationIcon from '@mui/icons-material/LocalGasStation';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import { format, differenceInDays, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { useEnergyData } from '../../hooks/useEnergyData';
+import { formatNumber } from '../../utils/formatters';
+import { useDateFilterContext } from '../../contexts/DateFilterContext';
 
 const CHART_COLORS = {
   electricity: '#8884d8',
   diesel: '#82ca9d',
-  cost: '#ffc658',
-};
-
-// Custom tooltip component
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload) return null;
-
-  const theme = useTheme();
-  const electricityData = payload.find((p: any) => p.dataKey === 'electricity_kwh');
-  const dieselData = payload.find((p: any) => p.dataKey === 'diesel_liters');
-  const costData = payload.find((p: any) => p.dataKey === 'total_cost');
-
-  return (
-    <Box
-      sx={{
-        bgcolor: theme.palette.mode === 'dark' 
-          ? 'rgba(0, 0, 0, 0.8)' 
-          : 'rgba(255, 255, 255, 0.9)',
-        p: 1.5,
-        borderRadius: 1,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-        border: `1px solid ${theme.palette.mode === 'dark' 
-          ? 'rgba(255, 255, 255, 0.1)' 
-          : 'rgba(0, 0, 0, 0.1)'}`,
-      }}
-    >
-      <Typography variant="subtitle2" sx={{ mb: 1, color: theme.palette.text.primary }}>
-        {label}
-      </Typography>
-      {electricityData && (
-        <Box sx={{ mb: 0.5 }}>
-          <Typography variant="body2" color="text.secondary">
-            Electricity: <strong>{formatNumber(electricityData.value)} kWh</strong>
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Cost: <strong>${formatNumber(payload[0].payload.electricity_cost)}</strong>
-          </Typography>
-        </Box>
-      )}
-      {dieselData && (
-        <Box sx={{ mb: 0.5 }}>
-          <Typography variant="body2" color="text.secondary">
-            Diesel: <strong>{formatNumber(dieselData.value)} L</strong>
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Cost: <strong>${formatNumber(payload[0].payload.diesel_cost)}</strong>
-          </Typography>
-        </Box>
-      )}
-      {costData && (
-        <Box sx={{ pt: 0.5, borderTop: `1px dashed ${theme.palette.divider}` }}>
-          <Typography variant="body2" sx={{ fontWeight: 'medium', color: theme.palette.text.primary }}>
-            Total Cost: <strong>${formatNumber(costData.value)}</strong>
-          </Typography>
-        </Box>
-      )}
-    </Box>
-  );
+  gradient1: '#8884d8',
+  gradient2: '#82ca9d',
 };
 
 export const EnergyWidget: React.FC = () => {
   const theme = useTheme();
   const { data, isLoading, error } = useEnergyData();
+  const { dateRange } = useDateFilterContext();
 
-  const cardStyle = {
+  const glassEffect = {
+    background: theme.palette.mode === 'dark'
+      ? 'linear-gradient(135deg, rgba(40,40,40,0.9) 0%, rgba(20,20,20,0.8) 100%)'
+      : 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%)',
+    backdropFilter: 'blur(10px)',
+    border: `1px solid ${theme.palette.mode === 'dark' 
+      ? 'rgba(255,255,255,0.1)' 
+      : 'rgba(0,0,0,0.1)'}`,
     borderRadius: '16px',
-    background: theme.palette.mode === 'dark' 
-      ? 'linear-gradient(145deg, #2A2D3E, #1F1F1F)'
-      : theme.palette.background.paper,
-    p: 3,
-    position: 'relative',
-    overflow: 'hidden',
-    transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+    boxShadow: theme.palette.mode === 'dark'
+      ? '0 8px 32px rgba(0,0,0,0.2)'
+      : '0 8px 32px rgba(31,38,135,0.15)',
+  };
+
+  const metricCardStyle = {
+    ...glassEffect,
+    p: 2.5,
+    height: '100%',
+    display: 'relative',
+    flexDirection: 'column',
+    gap: 1,
+    transition: 'transform 0.2s ease-in-out',
     '&:hover': {
       transform: 'translateY(-4px)',
-      boxShadow: theme.palette.mode === 'dark'
-        ? '0 4px 20px 0 rgba(0,0,0,.14), 0 7px 10px -5px rgba(64,64,64,.4)'
-        : '0 16px 38px -12px rgba(0,0,0,0.56), 0 4px 25px 0 rgba(0,0,0,0.12), 0 8px 10px -5px rgba(0,0,0,0.2)',
     },
+    position: 'relative',
+    overflow: 'hidden',
     '&::before': {
       content: '""',
       position: 'absolute',
       top: 0,
       left: 0,
       right: 0,
-      height: '4px',
-      background: 'linear-gradient(90deg, #8884d8, #82ca9d)',
+      height: '3px',
+      background: (props: { color?: string }) =>
+        `linear-gradient(90deg, ${props.color || CHART_COLORS.electricity}, ${alpha(props.color || CHART_COLORS.electricity, 0.3)})`,
     }
   };
 
-  const metricCardStyle = {
-    p: 2,
-    borderRadius: '12px',
-    background: theme.palette.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.05)'
-      : 'rgba(0, 0, 0, 0.02)',
-    backdropFilter: 'blur(10px)',
-    border: `1px solid ${theme.palette.mode === 'dark' 
-      ? 'rgba(255, 255, 255, 0.1)' 
-      : 'rgba(0, 0, 0, 0.05)'}`,
-    transition: 'all 0.3s ease',
-    position: 'relative',
-    overflow: 'hidden',
-    '&:hover': {
-      background: theme.palette.mode === 'dark'
-        ? 'rgba(255, 255, 255, 0.08)'
-        : 'rgba(0, 0, 0, 0.04)',
-      transform: 'translateY(-2px)',
-      boxShadow: theme.palette.mode === 'dark'
-        ? '0 8px 24px rgba(0,0,0,0.2)'
-        : '0 8px 24px rgba(0,0,0,0.1)',
+  const formatChartData = (data: any[]) => {
+    const daysDifference = differenceInDays(dateRange.endDate, dateRange.startDate);
+    
+    if (daysDifference <= 31) {
+      // For 31 days or less, show daily data
+      return data.map(item => ({
+        ...item,
+        date: format(new Date(item.date), 'MMM d'),
+        total_cost: item.electricity_cost + item.diesel_cost,
+      }));
+    } else {
+      // For longer periods, group by weeks
+      const weeklyData = data.reduce((acc: any[], item) => {
+        const itemDate = new Date(item.date);
+        const weekStart = startOfWeek(itemDate);
+        const weekEnd = endOfWeek(itemDate);
+        
+        const weekKey = format(weekStart, 'MMM d');
+        const existingWeek = acc.find(w => w.date === weekKey);
+
+        if (existingWeek) {
+          existingWeek.electricity_kwh += item.electricity_kwh;
+          existingWeek.diesel_liters += item.diesel_liters;
+          existingWeek.electricity_cost += item.electricity_cost;
+          existingWeek.diesel_cost += item.diesel_cost;
+          existingWeek.total_cost += item.electricity_cost + item.diesel_cost;
+          existingWeek.count += 1;
+        } else {
+          acc.push({
+            date: weekKey,
+            dateRange: `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`,
+            electricity_kwh: item.electricity_kwh,
+            diesel_liters: item.diesel_liters,
+            electricity_cost: item.electricity_cost,
+            diesel_cost: item.diesel_cost,
+            total_cost: item.electricity_cost + item.diesel_cost,
+            count: 1
+          });
+        }
+        return acc;
+      }, []);
+
+      // Calculate averages for each week
+      return weeklyData.map(week => ({
+        ...week,
+        electricity_kwh: week.electricity_kwh / week.count,
+        diesel_liters: week.diesel_liters / week.count,
+        electricity_cost: week.electricity_cost / week.count,
+        diesel_cost: week.diesel_cost / week.count,
+        total_cost: week.total_cost / week.count
+      }));
     }
   };
 
-  const chartContainerStyle = {
-    mt: 4,
-    p: 2,
-    borderRadius: '12px',
-    background: theme.palette.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.05)'
-      : 'rgba(0, 0, 0, 0.02)',
-    backdropFilter: 'blur(10px)',
-    border: `1px solid ${theme.palette.mode === 'dark'
-      ? 'rgba(255, 255, 255, 0.1)'
-      : 'rgba(0, 0, 0, 0.05)'}`,
-    height: 300,
+  const chartData = React.useMemo(() => {
+    if (!data?.data) return [];
+    
+    // Filter data based on date range
+    const filteredData = data.data.filter(item => {
+      const itemDate = new Date(item.date);
+      return isWithinInterval(itemDate, {
+        start: dateRange.startDate,
+        end: dateRange.endDate
+      });
+    });
+
+    return formatChartData(filteredData);
+  }, [data, dateRange]);
+
+  const CustomTooltip = ({ active, payload, label, daysDifference }: any) => {
+    if (!active || !payload) return null;
+
+    return (
+      <Box
+        sx={{
+          ...glassEffect,
+          p: 2,
+          minWidth: 200,
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ mb: 1, color: theme.palette.text.primary }}>
+          {label}
+        </Typography>
+        {payload.map((entry: any) => (
+          <Stack key={entry.name} spacing={0.5} sx={{ mt: 0.5 }}>
+            <Typography variant="body2" sx={{ color: entry.color, fontWeight: 500 }}>
+              {entry.name === 'electricity_kwh' ? 'Electricity' : 'Diesel'}:
+              <span style={{ marginLeft: 8, fontWeight: 600 }}>
+                {formatNumber(entry.value)} {entry.name === 'electricity_kwh' ? 'kWh' : 'L'}
+              </span>
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Cost: ${formatNumber(entry.payload[entry.name === 'electricity_kwh' ? 'electricity_cost' : 'diesel_cost'])}
+            </Typography>
+          </Stack>
+        ))}
+        <Box sx={{ pt: 1, mt: 1, borderTop: `1px dashed ${theme.palette.divider}` }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.primary.main }}>
+            Total Cost: ${formatNumber(payload[0].payload.total_cost)}
+          </Typography>
+        </Box>
+      </Box>
+    );
   };
 
   if (isLoading) {
     return (
-      <Paper elevation={3} sx={cardStyle}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-          <CircularProgress sx={{ color: CHART_COLORS.electricity }} />
-        </Box>
+      <Paper elevation={0} sx={{ ...glassEffect, p: 3, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <CircularProgress />
       </Paper>
     );
   }
 
   if (error) {
     return (
-      <Paper elevation={3} sx={cardStyle}>
+      <Paper elevation={0} sx={{ ...glassEffect, p: 3 }}>
         <Alert 
           severity="error" 
           sx={{ 
-            backgroundColor: 'rgba(211, 47, 47, 0.1)', 
-            color: '#ff8a80',
-            border: '1px solid rgba(211, 47, 47, 0.2)',
-            borderRadius: 2,
+            backgroundColor: 'transparent',
+            color: theme.palette.error.main,
+            border: `1px solid ${theme.palette.error.main}`,
+            '& .MuiAlert-icon': {
+              color: theme.palette.error.main,
+            }
           }}
         >
           Error loading energy data
@@ -187,17 +216,19 @@ export const EnergyWidget: React.FC = () => {
 
   if (!data || !data.data || data.data.length === 0) {
     return (
-      <Paper elevation={3} sx={cardStyle}>
+      <Paper elevation={0} sx={{ ...glassEffect, p: 3 }}>
         <Alert 
-          severity="info" 
+          severity="info"
           sx={{ 
-            backgroundColor: 'rgba(33, 150, 243, 0.1)', 
-            color: '#90caf9',
-            border: '1px solid rgba(33, 150, 243, 0.2)',
-            borderRadius: 2,
+            backgroundColor: 'transparent',
+            color: theme.palette.info.main,
+            border: `1px solid ${theme.palette.info.main}`,
+            '& .MuiAlert-icon': {
+              color: theme.palette.info.main,
+            }
           }}
         >
-          No energy data available for the selected period
+          No energy data available
         </Alert>
       </Paper>
     );
@@ -205,17 +236,7 @@ export const EnergyWidget: React.FC = () => {
 
   const { summary } = data;
 
-  // Format data for the chart - take last 7 days only
-  const chartData = [...data.data]
-    .slice(0, 7)
-    .reverse()
-    .map(item => ({
-      ...item,
-      date: format(new Date(item.date), 'MMM d'),
-      total_cost: item.electricity_cost + item.diesel_cost,
-    }));
-
-  // Calculate daily averages for comparison
+  // Calculate daily averages for comparison using the formatted data
   const previousDay = chartData[chartData.length - 2] || chartData[chartData.length - 1];
   const currentDay = chartData[chartData.length - 1];
   const electricityChange = previousDay && currentDay
@@ -225,149 +246,154 @@ export const EnergyWidget: React.FC = () => {
     ? ((currentDay.diesel_liters - previousDay.diesel_liters) / previousDay.diesel_liters) * 100
     : 0;
 
-  return (
-    <Paper elevation={3} sx={cardStyle}>
-      <Box sx={{ position: 'relative', zIndex: 1 }}>
-        <Typography 
-          variant="h6" 
-          sx={{ 
-            mb: 4,
-            color: theme.palette.mode === 'dark'
-              ? 'rgba(255,255,255,0.9)'
-              : 'rgba(0,0,0,0.9)',
-            fontSize: '1.25rem',
-            fontWeight: 600,
-            letterSpacing: '0.5px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-          }}
-        >
-          <BoltIcon sx={{ color: CHART_COLORS.electricity }} />
-          Energy Consumption
-        </Typography>
+  const daysDifference = differenceInDays(dateRange.endDate, dateRange.startDate);
 
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Box sx={metricCardStyle}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+  return (
+    <Paper elevation={0} sx={{ 
+      ...glassEffect, 
+      p: 3, 
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    }}>
+      <Box sx={{ 
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0, // Important for flex containment
+        overflow: 'hidden' // Prevent content overflow
+      }}>
+        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <BoltIcon sx={{ color: CHART_COLORS.electricity }} />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Energy Consumption
+            </Typography>
+          </Stack>
+          <Tooltip title="Daily energy consumption metrics including electricity and diesel usage">
+            <IconButton size="small">
+              <InfoOutlinedIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} sm={6}>
+            <Box sx={{ ...metricCardStyle, color: CHART_COLORS.electricity }}>
+              <Stack direction="row" spacing={1} alignItems="center">
                 <BoltIcon sx={{ color: CHART_COLORS.electricity }} />
                 <Typography variant="body2" color="text.secondary">
-                  Total Electricity
+                  Electricity Usage
                 </Typography>
-              </Box>
-              <Typography variant="h6" component="div" sx={{ color: CHART_COLORS.electricity }}>
-                {formatNumber(summary.total_electricity_kwh)} kWh
-                <TrendIndicator value={summary.trend_electricity} />
+              </Stack>
+              <Typography variant="h4" sx={{ mt: 1, color: CHART_COLORS.electricity, fontWeight: 600 }}>
+                {formatNumber(currentDay.electricity_kwh)} kWh
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Daily change: {electricityChange.toFixed(1)}%
-              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 'auto' }}>
+                {electricityChange >= 0 ? (
+                  <TrendingUpIcon color="success" fontSize="small" />
+                ) : (
+                  <TrendingDownIcon color="error" fontSize="small" />
+                )}
+                <Typography
+                  variant="caption"
+                  color={electricityChange >= 0 ? 'success.main' : 'error.main'}
+                  fontWeight={500}
+                >
+                  {Math.abs(electricityChange).toFixed(1)}% vs yesterday
+                </Typography>
+              </Stack>
             </Box>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Box sx={metricCardStyle}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Grid item xs={12} sm={6}>
+            <Box sx={{ ...metricCardStyle, color: CHART_COLORS.diesel }}>
+              <Stack direction="row" spacing={1} alignItems="center">
                 <LocalGasStationIcon sx={{ color: CHART_COLORS.diesel }} />
                 <Typography variant="body2" color="text.secondary">
-                  Total Diesel
+                  Diesel Consumption
                 </Typography>
-              </Box>
-              <Typography variant="h6" component="div" sx={{ color: CHART_COLORS.diesel }}>
-                {formatNumber(summary.total_diesel_liters)} L
-                <TrendIndicator value={summary.trend_diesel} />
+              </Stack>
+              <Typography variant="h4" sx={{ mt: 1, color: CHART_COLORS.diesel, fontWeight: 600 }}>
+                {formatNumber(currentDay.diesel_liters)} L
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Daily change: {dieselChange.toFixed(1)}%
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Box sx={metricCardStyle}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <BoltIcon sx={{ color: CHART_COLORS.electricity }} />
-                <Typography variant="body2" color="text.secondary">
-                  Daily Avg. Electricity
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 'auto' }}>
+                {dieselChange >= 0 ? (
+                  <TrendingUpIcon color="success" fontSize="small" />
+                ) : (
+                  <TrendingDownIcon color="error" fontSize="small" />
+                )}
+                <Typography
+                  variant="caption"
+                  color={dieselChange >= 0 ? 'success.main' : 'error.main'}
+                  fontWeight={500}
+                >
+                  {Math.abs(dieselChange).toFixed(1)}% vs yesterday
                 </Typography>
-              </Box>
-              <Typography variant="h6" component="div" sx={{ color: CHART_COLORS.electricity }}>
-                {formatNumber(summary.avg_electricity_kwh)} kWh
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Cost: ${formatNumber(summary.avg_electricity_cost)}
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Box sx={metricCardStyle}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <AttachMoneyIcon sx={{ color: CHART_COLORS.cost }} />
-                <Typography variant="body2" color="text.secondary">
-                  Total Cost
-                </Typography>
-              </Box>
-              <Typography variant="h6" component="div" sx={{ color: CHART_COLORS.cost }}>
-                ${formatNumber(summary.total_cost)}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Daily Avg: ${formatNumber(summary.avg_total_cost)}
-              </Typography>
+              </Stack>
             </Box>
           </Grid>
         </Grid>
 
-        <Box sx={chartContainerStyle}>
+        <Box sx={{ 
+          flex: 1,
+          minHeight: 0,
+          position: 'relative',
+          width: '100%',
+          overflow: 'hidden'
+        }}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid 
-                strokeDasharray="3 3" 
-                stroke={theme.palette.mode === 'dark' 
-                  ? 'rgba(255, 255, 255, 0.1)' 
-                  : 'rgba(0, 0, 0, 0.1)'
-                } 
+            <AreaChart 
+              data={chartData} 
+              margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="electricity" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={CHART_COLORS.electricity} stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor={CHART_COLORS.electricity} stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="diesel" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={CHART_COLORS.diesel} stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor={CHART_COLORS.diesel} stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
+              <XAxis
+                dataKey={daysDifference <= 31 ? 'date' : 'dateRange'}
+                stroke={theme.palette.text.secondary}
+                tick={{ fill: theme.palette.text.secondary }}
+                interval={0}
+                angle={-45}
+                textAnchor="end"
+                height={60}
               />
-              <XAxis 
-                dataKey="date" 
+              <YAxis
                 stroke={theme.palette.text.secondary}
                 tick={{ fill: theme.palette.text.secondary }}
               />
-              <YAxis 
-                stroke={theme.palette.text.secondary}
-                tick={{ fill: theme.palette.text.secondary }}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Line
+              <RechartsTooltip content={<CustomTooltip daysDifference={daysDifference} />} />
+              <Area
                 type="monotone"
                 dataKey="electricity_kwh"
-                name="Electricity (kWh)"
+                name="Electricity"
                 stroke={CHART_COLORS.electricity}
-                strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
+                fillOpacity={1}
+                fill="url(#electricity)"
               />
-              <Line
+              <Area
                 type="monotone"
                 dataKey="diesel_liters"
-                name="Diesel (L)"
+                name="Diesel"
                 stroke={CHART_COLORS.diesel}
-                strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
+                fillOpacity={1}
+                fill="url(#diesel)"
               />
-              <Line
-                type="monotone"
-                dataKey="total_cost"
-                name="Total Cost ($)"
-                stroke={CHART_COLORS.cost}
-                strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         </Box>
       </Box>
     </Paper>
   );
 };
+
+export default EnergyWidget;

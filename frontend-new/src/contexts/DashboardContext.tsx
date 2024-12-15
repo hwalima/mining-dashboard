@@ -1,111 +1,108 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Widget } from '../types/dashboard';
 
-interface Widget {
-  id: string;
-  name: string;
-  type: string;
-  isVisible: boolean;
-  description?: string;
-}
+const defaultWidgets: Widget[] = [
+  {
+    id: 'equipment',
+    name: 'Equipment Status',
+    type: 'status',
+    isVisible: true,
+    description: 'Status of mining machinery and equipment'
+  },
+  {
+    id: 'energy',
+    name: 'Energy Consumption',
+    type: 'chart',
+    isVisible: true,
+    description: 'Daily electricity and diesel consumption with costs'
+  },
+  {
+    id: 'gold-production',
+    name: 'Gold Production',
+    type: 'chart',
+    isVisible: true,
+    description: 'Daily gold production with weight, purity, and value'
+  },
+  {
+    id: 'labor',
+    name: 'Labor Metrics',
+    type: 'metrics',
+    isVisible: true,
+    description: 'Workforce statistics and productivity metrics'
+  },
+  {
+    id: 'safety',
+    name: 'Safety Status',
+    type: 'status',
+    isVisible: true,
+    description: 'Safety incidents and days without accidents'
+  },
+  {
+    id: 'chemicals',
+    name: 'Chemical Inventory',
+    type: 'inventory',
+    isVisible: true,
+    description: 'Chemical stock levels in kg and costs in $'
+  },
+  {
+    id: 'explosives',
+    name: 'Explosives Inventory',
+    type: 'inventory',
+    isVisible: true,
+    description: 'Explosives stock levels and usage'
+  },
+  {
+    id: 'environmental',
+    name: 'Environmental Metrics',
+    type: 'chart',
+    isVisible: true,
+    description: 'Environmental impact metrics and compliance data'
+  },
+  {
+    id: 'expenses',
+    name: 'Daily Expenses',
+    type: 'chart',
+    isVisible: true,
+    description: 'Breakdown of daily operational costs in $'
+  }
+];
 
 interface DashboardContextType {
   widgets: Widget[];
   toggleWidget: (id: string) => void;
   addWidget: (widget: Omit<Widget, 'isVisible'>) => void;
   removeWidget: (id: string) => void;
-  updateWidgets: (updatedWidgets: Widget[]) => void;
+  updateWidgets: (widgets: Widget[]) => void;
 }
-
-const defaultWidgets: Widget[] = [
-  { 
-    id: 'equipment', 
-    name: 'Equipment Status', 
-    type: 'equipment',
-    description: 'Status of mining machinery and equipment',
-    isVisible: true 
-  },
-  { 
-    id: 'energy', 
-    name: 'Energy Consumption', 
-    type: 'energy',
-    description: 'Daily electricity and diesel consumption with costs',
-    isVisible: true 
-  },
-  { 
-    id: 'goldProduction', 
-    name: 'Gold Production', 
-    type: 'goldProduction',
-    description: 'Daily gold production with weight, purity, and value',
-    isVisible: true 
-  },
-  { 
-    id: 'production', 
-    name: 'Production Overview', 
-    type: 'production',
-    description: 'Overall production metrics and efficiency',
-    isVisible: true 
-  },
-  { 
-    id: 'safety', 
-    name: 'Safety Status', 
-    type: 'safety',
-    description: 'Safety incidents and days without accidents',
-    isVisible: true 
-  },
-  { 
-    id: 'chemicals', 
-    name: 'Chemical Inventory', 
-    type: 'chemicals',
-    description: 'Chemical stock levels in kg and costs in $',
-    isVisible: true 
-  },
-  { 
-    id: 'explosives', 
-    name: 'Explosives Inventory', 
-    type: 'explosives',
-    description: 'Explosives stock levels and usage',
-    isVisible: false 
-  },
-  { 
-    id: 'stockpile', 
-    name: 'Stockpile Volumes', 
-    type: 'stockpile',
-    description: 'Crushed and milled ore volumes',
-    isVisible: false 
-  },
-  { 
-    id: 'expenses', 
-    name: 'Daily Expenses', 
-    type: 'expenses',
-    description: 'Breakdown of daily operational costs in $',
-    isVisible: false 
-  },
-  { 
-    id: 'labor', 
-    name: 'Labor Metrics', 
-    type: 'labor',
-    description: 'Workforce statistics and costs',
-    isVisible: false 
-  },
-  { 
-    id: 'environmental', 
-    name: 'Environmental Impact', 
-    type: 'environmental',
-    description: 'Water usage, emissions, and waste metrics',
-    isVisible: false 
-  }
-];
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
 
 export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [widgets, setWidgets] = useState<Widget[]>(() => {
     const savedWidgets = localStorage.getItem('dashboardWidgets');
-    return savedWidgets ? JSON.parse(savedWidgets) : defaultWidgets;
+    if (savedWidgets) {
+      try {
+        const parsed = JSON.parse(savedWidgets);
+        // Merge with default widgets to ensure all required widgets exist
+        const widgetMap = new Map(parsed.map((w: Widget) => [w.id, w]));
+        return defaultWidgets.map(dw => ({
+          ...dw,
+          isVisible: widgetMap.has(dw.id) ? widgetMap.get(dw.id)!.isVisible : dw.isVisible
+        }));
+      } catch (e) {
+        console.error('Error parsing saved widgets:', e);
+        return defaultWidgets;
+      }
+    }
+    return defaultWidgets;
   });
 
   useEffect(() => {
-    localStorage.setItem('dashboardWidgets', JSON.stringify(widgets));
+    try {
+      localStorage.setItem('dashboardWidgets', JSON.stringify(widgets));
+    } catch (e) {
+      console.error('Error saving widgets to localStorage:', e);
+    }
   }, [widgets]);
 
   const toggleWidget = (id: string) => {
@@ -142,3 +139,5 @@ export const useDashboard = () => {
   }
   return context;
 };
+
+export default DashboardContext;
