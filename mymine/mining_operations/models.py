@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from decimal import Decimal
 import uuid
+from datetime import timedelta
 
 class MiningDepartment(models.Model):
     """
@@ -24,8 +25,8 @@ class MiningDepartment(models.Model):
     name = models.CharField(max_length=100)
     type = models.CharField(max_length=20, choices=DEPARTMENT_TYPES)
     description = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
     history = HistoricalRecords()
 
     def __str__(self):
@@ -147,8 +148,8 @@ class DailyProductionLog(models.Model):
         default=0
     )
     notes = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    modified_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    modified_at = models.DateTimeField(auto_now=True, null=True)
     history = HistoricalRecords(
         history_change_reason_field=models.TextField(null=True),
         inherit=True
@@ -251,8 +252,8 @@ class SafetyIncident(models.Model):
     reported_by = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True)
     investigation_status = models.CharField(max_length=20, default='pending')
     investigation_report = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
@@ -318,8 +319,8 @@ class StockpileVolume(models.Model):
     waste_tons = models.FloatField(validators=[MinValueValidator(0)])
     grade_gpt = models.FloatField(validators=[MinValueValidator(0)])
     location = models.CharField(max_length=50)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
     history = HistoricalRecords()
 
     class Meta:
@@ -337,8 +338,8 @@ class ExplosivesInventory(models.Model):
     detonators_count = models.IntegerField(validators=[MinValueValidator(0)])
     boosters_count = models.IntegerField(validators=[MinValueValidator(0)])
     total_value = models.DecimalField(max_digits=10, decimal_places=2)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
     history = HistoricalRecords()
 
     class Meta:
@@ -359,8 +360,8 @@ class EnvironmentalMetric(models.Model):
     carbon_emissions = models.DecimalField(max_digits=10, decimal_places=2, help_text='Carbon emissions in metric tons')
     waste_generated = models.DecimalField(max_digits=10, decimal_places=2, help_text='Waste generated in metric tons')
     additional_notes = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
     history = HistoricalRecords()
 
     class Meta:
@@ -418,10 +419,18 @@ class EnergyUsage(models.Model):
         validators=[MinValueValidator(0)],
         help_text='Total energy cost for the day in $'
     )
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+    history = HistoricalRecords()
 
     class Meta:
         ordering = ['-date']
+        verbose_name = 'Energy Usage'
         verbose_name_plural = 'Energy Usage'
+        indexes = [
+            models.Index(fields=['date']),
+        ]
 
     def save(self, *args, **kwargs):
         # Automatically calculate total cost
@@ -438,8 +447,8 @@ class Skill(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField()
     category = models.CharField(max_length=50)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
@@ -463,8 +472,8 @@ class Certification(models.Model):
     issuing_body = models.CharField(max_length=100)
     validity_period = models.IntegerField(help_text='Validity period in months')
     description = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
@@ -501,8 +510,8 @@ class Employee(models.Model):
     certifications = models.ManyToManyField(Certification, related_name='employees')
     emergency_contact = models.TextField()
     hourly_rate = models.DecimalField(max_digits=10, decimal_places=2)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
@@ -533,8 +542,8 @@ class Shift(models.Model):
     supervisor = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, related_name='supervised_shifts')
     department = models.ForeignKey(MiningDepartment, on_delete=models.SET_NULL, null=True, blank=True, related_name='shifts')
     description = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
@@ -583,8 +592,8 @@ class Zone(models.Model):
     max_occupancy = models.IntegerField()
     requires_certification = models.BooleanField(default=False)
     required_certifications = models.ManyToManyField(Certification, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
@@ -634,8 +643,8 @@ class LaborMetric(models.Model):
     safety_incidents = models.IntegerField(default=0)
     hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, default=25.00)
     notes = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
@@ -701,3 +710,135 @@ class EquipmentMaintenanceLog(models.Model):
     def __str__(self):
         equipment = self.heavy_machinery or self.milling_equipment
         return f"Maintenance - {equipment} on {self.date}"
+
+class Equipment(models.Model):
+    """
+    Represents mining equipment
+    """
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    department = models.ForeignKey(MiningDepartment, on_delete=models.SET_NULL, null=True, related_name='equipment')
+    last_service_date = models.DateField(null=True, blank=True)
+    next_service_date = models.DateField(null=True, blank=True)
+    service_interval_days = models.PositiveIntegerField(default=30, help_text="Number of days between services")
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+    history = HistoricalRecords()
+
+    def get_days_since_last_service(self):
+        """Calculate days since last service"""
+        if not self.last_service_date:
+            return None
+        today = timezone.now().date()
+        return (today - self.last_service_date).days
+
+    def get_days_until_next_service(self):
+        """Calculate days until next service"""
+        if not self.next_service_date:
+            return None
+        today = timezone.now().date()
+        return (self.next_service_date - today).days
+
+    def get_service_status(self):
+        """
+        Determine service status based on last service date and interval:
+        - overdue: if we're past the next service date
+        - due_soon: if we're within 7 days of next service date
+        - ok: if we're more than 7 days before next service date
+        - unknown: if we don't have enough information
+        """
+        if not self.last_service_date or not self.service_interval_days:
+            return {
+                'status': 'unknown',
+                'message': 'No service history',
+                'days_overdue': None,
+                'days_until_next': None
+            }
+
+        days_since_last = self.get_days_since_last_service()
+        days_until_next = self.get_days_until_next_service()
+
+        # If we're past the service interval
+        if days_since_last > self.service_interval_days:
+            days_overdue = days_since_last - self.service_interval_days
+            return {
+                'status': 'overdue',
+                'message': f'Overdue by {days_overdue} days',
+                'days_overdue': days_overdue,
+                'days_until_next': days_until_next
+            }
+        
+        # If we're within 7 days of next service
+        elif days_until_next is not None and days_until_next <= 7:
+            return {
+                'status': 'due_soon',
+                'message': f'Due in {days_until_next} days',
+                'days_overdue': None,
+                'days_until_next': days_until_next
+            }
+        
+        # If we're more than 7 days before next service
+        else:
+            return {
+                'status': 'ok',
+                'message': f'Next service in {days_until_next} days',
+                'days_overdue': None,
+                'days_until_next': days_until_next
+            }
+
+    def calculate_next_service_date(self):
+        """Calculate the next service date based on last service and interval"""
+        if not self.last_service_date or not self.service_interval_days:
+            return None
+        return self.last_service_date + timedelta(days=self.service_interval_days)
+
+    def save(self, *args, **kwargs):
+        if self.last_service_date and self.service_interval_days:
+            # Always recalculate next_service_date based on last service and interval
+            self.next_service_date = self.calculate_next_service_date()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Equipment'
+        verbose_name_plural = 'Equipment'
+
+class MiningEquipment(models.Model):
+    """
+    Model for tracking mining equipment and machinery with service schedules
+    """
+    name = models.CharField(max_length=200, help_text="Name of the equipment")
+    description = models.TextField(help_text="Detailed description of the equipment")
+    value_usd = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2,
+        help_text="Current value in USD"
+    )
+    last_service_date = models.DateField(
+        help_text="Date of the last service"
+    )
+    next_service_date = models.DateField(
+        help_text="Date when next service is due"
+    )
+    service_interval_days = models.PositiveIntegerField(
+        help_text="Number of days between services"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Mining Equipment"
+        verbose_name_plural = "Mining Equipment"
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} (Next service: {self.next_service_date})"
+
+    def save(self, *args, **kwargs):
+        # If last_service_date is set but next_service_date isn't,
+        # calculate next_service_date based on the interval
+        if self.last_service_date and not self.next_service_date:
+            self.next_service_date = self.last_service_date + timedelta(days=self.service_interval_days)
+        super().save(*args, **kwargs)

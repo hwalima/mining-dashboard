@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { format } from 'date-fns';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -18,10 +18,6 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    // Add these headers for CORS
-    config.headers['Access-Control-Allow-Origin'] = '*';
-    config.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
-    config.headers['Access-Control-Allow-Headers'] = 'Origin, Content-Type, Accept, Authorization, X-Request-With';
     return config;
   },
   (error) => {
@@ -116,11 +112,38 @@ export interface ChemicalInventory {
 
 export interface SafetyIncident {
   id: number;
-  type: string;
-  description: string;
   date: string;
+  incident_type: string;
   severity: string;
-  resolved: boolean;
+  description: string;
+  department?: string;
+  zone?: string;
+  investigation_status: string;
+  corrective_actions?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SafetyData {
+  summary: {
+    total_incidents: number;
+    severity_counts: {
+      low: number;
+      medium: number;
+      high: number;
+      critical: number;
+    };
+    type_counts: Record<string, number>;
+    status_counts: Record<string, number>;
+    trend_percentage: number;
+  };
+  department_stats: Array<{
+    department: string;
+    total_incidents: number;
+    severity_breakdown: Record<string, number>;
+    type_breakdown: Record<string, number>;
+  }>;
+  recent_incidents: SafetyIncident[];
 }
 
 export interface ExplosiveInventory {
@@ -232,104 +255,6 @@ export interface ProductionData {
   };
 }
 
-export interface SafetyData {
-  data: Array<{
-    id: number;
-    date: string;
-    type: string;
-    severity: string;
-    description: string;
-    corrective_actions: string;
-  }>;
-  summary: {
-    total_incidents: number;
-    days_without_incident: number;
-    severity_breakdown: {
-      low: number;
-      medium: number;
-      high: number;
-      critical: number;
-    };
-  };
-}
-
-export interface ExplosivesData {
-  data: Array<{
-    date: string;
-    anfo_kg: number;
-    emulsion_kg: number;
-    detonators_count: number;
-    boosters_count: number;
-    total_value: number;
-  }>;
-  summary: {
-    total_value: number;
-    latest_inventory: {
-      anfo: number;
-      emulsion: number;
-    };
-  };
-}
-
-export interface StockpileData {
-  data: Array<{
-    date: string;
-    ore_tons: number;
-    waste_tons: number;
-    grade_gpt: number;
-    location: string;
-  }>;
-  summary: {
-    total_ore: number;
-    total_waste: number;
-    avg_grade: number;
-  };
-}
-
-export interface ExpensesData {
-  data: Array<{
-    date: string;
-    category: string;
-    amount: number;
-    description: string;
-  }>;
-  summary: {
-    total: number;
-    by_category: Record<string, number>;
-  };
-}
-
-export interface LaborData {
-  data: Array<{
-    date: string;
-    workers_present: number;
-    hours_worked: number;
-    productivity_index: number;
-    department: string;
-  }>;
-  summary: {
-    total_workers: number;
-    avg_hours: number;
-    avg_productivity: number;
-  };
-}
-
-export interface EnvironmentalData {
-  data: Array<{
-    date: string;
-    dust_level: number;
-    noise_level: number;
-    water_ph: number;
-    water_usage: number;
-  }>;
-  summary: {
-    avg_dust: number;
-    avg_noise: number;
-    avg_ph: number;
-    total_water: number;
-  };
-}
-
 export interface DashboardData {
   production: ProductionData;
   safety: SafetyData;
@@ -367,51 +292,42 @@ interface DateRangeParams {
 }
 
 import { GoldProductionResponse } from '../types/goldProduction';
+import { Department, DepartmentFormData } from '../types/department';
 
 export const fetchGoldProductionData = async (dateRange: DateRangeParams): Promise<GoldProductionResponse> => {
   const { data } = await api.get<GoldProductionResponse>(
-    `/api/mining-operations/gold-production/?from_date=${dateRange.from_date}&to_date=${dateRange.to_date}`,
+    `/mining-operations/gold-production/?from_date=${dateRange.from_date}&to_date=${dateRange.to_date}`,
   );
   return data;
 };
 
 export const fetchDashboardData = async (params: DateRangeParams) => {
-  const response = await api.get(`/api/mining-operations/dashboard-data/?from_date=${params.from_date}&to_date=${params.to_date}`);
+  const response = await api.get(`/mining-operations/dashboard-data/?from_date=${params.from_date}&to_date=${params.to_date}`);
   return response.data;
 };
 
 export const fetchDailyLogs = async (params: DateRangeParams) => {
-  const response = await api.get(`/api/daily-logs/?from_date=${params.from_date}&to_date=${params.to_date}`);
-  return response.data;
-};
-
-export const fetchMachineryStatus = async (params: DateRangeParams) => {
-  const response = await api.get(`/api/machinery-status/?from_date=${params.from_date}&to_date=${params.to_date}`);
+  const response = await api.get(`/daily-logs/?from_date=${params.from_date}&to_date=${params.to_date}`);
   return response.data;
 };
 
 export const fetchChemicalInventory = async (params: DateRangeParams) => {
-  const response = await api.get(`/api/chemical-inventory/?from_date=${params.from_date}&to_date=${params.to_date}`);
+  const response = await api.get(`/chemical-inventory/?from_date=${params.from_date}&to_date=${params.to_date}`);
   return response.data;
 };
 
 export const fetchSafetyIncidents = async (params: DateRangeParams) => {
-  const response = await api.get(`/api/safety-incidents/?from_date=${params.from_date}&to_date=${params.to_date}`);
+  const response = await api.get(`/safety-incidents/?from_date=${params.from_date}&to_date=${params.to_date}`);
   return response.data;
 };
 
 export const fetchEnergyUsage = async (params: DateRangeParams) => {
-  const response = await api.get(`/api/mining-operations/energy-usage/?from_date=${params.from_date}&to_date=${params.to_date}`);
+  const response = await api.get(`/energy-usage/?from_date=${params.from_date}&to_date=${params.to_date}`);
   return response.data;
 };
 
 export const fetchProductionMetrics = async (params: DateRangeParams) => {
-  const response = await api.get(`/api/production-metrics/?from_date=${params.from_date}&to_date=${params.to_date}`);
-  return response.data;
-};
-
-export const fetchEquipmentStatus = async (params: DateRangeParams) => {
-  const response = await api.get(`/api/equipment-status/?from_date=${params.from_date}&to_date=${params.to_date}`);
+  const response = await api.get(`/production-metrics/?from_date=${params.from_date}&to_date=${params.to_date}`);
   return response.data;
 };
 
@@ -425,7 +341,7 @@ export const fetchGoldProduction = async ({ from_date, to_date }: DateRangeParam
     }
 
     const response = await api.get<GoldProductionResponse>(
-      `/api/mining-operations/gold-production/`,
+      `/mining-operations/gold-production/`,
       {
         params: { from_date, to_date },
         headers: {
@@ -483,7 +399,7 @@ export const fetchGoldProduction = async ({ from_date, to_date }: DateRangeParam
 };
 
 export const fetchChemicalsUsage = async (params: DateRangeParams) => {
-  const response = await api.get(`/api/mining-operations/chemicals-usage/?from_date=${params.from_date}&to_date=${params.to_date}`);
+  const response = await api.get(`/mining-operations/chemicals-usage/?from_date=${params.from_date}&to_date=${params.to_date}`);
   return response.data;
 };
 
@@ -514,7 +430,7 @@ export interface StockpileResponse {
 
 export const fetchStockpileData = async (params: DateRangeParams): Promise<StockpileResponse> => {
   try {
-    const response = await api.get('/api/stockpile-volumes/', { params });
+    const response = await api.get('/stockpile-volumes/', { params });
     return response.data;
   } catch (error) {
     console.error('Error fetching stockpile data:', error);
@@ -526,7 +442,7 @@ export const dashboardService = {
   // Get daily production logs
   getDailyLogs: async () => {
     try {
-      const response = await api.get<{ logs: DailyLog[], summary: any }>('/api/mining/daily-logs/');
+      const response = await api.get<{ logs: DailyLog[], summary: any }>('/mining/daily-logs/');
       return response.data;
     } catch (error) {
       console.error('Error fetching daily logs:', error);
@@ -537,7 +453,7 @@ export const dashboardService = {
   // Get chemical inventory
   getChemicals: async () => {
     try {
-      const response = await api.get<{ chemicals: ChemicalInventory[], summary: any }>('/api/dashboard/chemicals/');
+      const response = await api.get<{ chemicals: ChemicalInventory[], summary: any }>('/dashboard/chemicals/');
       return response.data;
     } catch (error) {
       console.error('Error fetching chemical inventory:', error);
@@ -548,7 +464,7 @@ export const dashboardService = {
   // Get safety incidents and summary
   getSafetyIncidents: async () => {
     try {
-      const response = await api.get<{ incidents: SafetyIncident[], summary: any }>('/api/dashboard/safety/');
+      const response = await api.get<{ incidents: SafetyIncident[], summary: any }>('/dashboard/safety/');
       return response.data;
     } catch (error) {
       console.error('Error fetching safety incidents:', error);
@@ -559,7 +475,7 @@ export const dashboardService = {
   // Get explosives inventory
   getExplosives: async () => {
     try {
-      const response = await api.get<{ explosives: ExplosiveInventory[], summary: any }>('/api/dashboard/explosives/');
+      const response = await api.get<{ explosives: ExplosiveInventory[], summary: any }>('/dashboard/explosives/');
       return response.data;
     } catch (error) {
       console.error('Error fetching explosives inventory:', error);
@@ -570,7 +486,7 @@ export const dashboardService = {
   // Get stockpile volumes
   getStockpile: async () => {
     try {
-      const response = await api.get<{ data: DailyStockpileData[], summary: StockpileSummary }>('/api/dashboard/stockpile/');
+      const response = await api.get<{ data: DailyStockpileData[], summary: StockpileSummary }>('/dashboard/stockpile/');
       return response.data;
     } catch (error) {
       console.error('Error fetching stockpile volumes:', error);
@@ -581,7 +497,7 @@ export const dashboardService = {
   // Get daily expenses
   getExpenses: async () => {
     try {
-      const response = await api.get<{ data: DailyExpense[], summary: any }>('/api/dashboard/expenses/');
+      const response = await api.get<{ data: DailyExpense[], summary: any }>('/dashboard/expenses/');
       return response.data;
     } catch (error) {
       console.error('Error fetching daily expenses:', error);
@@ -592,7 +508,7 @@ export const dashboardService = {
   // Get labor metrics
   getLaborMetrics: async () => {
     try {
-      const response = await api.get<{ data: LaborMetrics[], summary: any }>('/api/dashboard/labor/');
+      const response = await api.get<{ data: LaborMetrics[], summary: any }>('/dashboard/labor/');
       return response.data;
     } catch (error) {
       console.error('Error fetching labor metrics:', error);
@@ -603,7 +519,7 @@ export const dashboardService = {
   // Get environmental metrics
   getEnvironmentalMetrics: async () => {
     try {
-      const response = await api.get<{ data: EnvironmentalMetrics[], summary: any }>('/api/dashboard/environmental/');
+      const response = await api.get<{ data: EnvironmentalMetrics[], summary: any }>('/dashboard/environmental/');
       return response.data;
     } catch (error) {
       console.error('Error fetching environmental metrics:', error);
@@ -617,7 +533,7 @@ export const dashboardService = {
       const formattedStartDate = format(startDate, 'yyyy-MM-dd');
       const formattedEndDate = format(endDate, 'yyyy-MM-dd');
       
-      const response = await api.get('/api/energy-usage/', {
+      const response = await api.get('/energy-usage/', {
         params: {
           from_date: formattedStartDate,
           to_date: formattedEndDate,
@@ -636,7 +552,7 @@ export const dashboardService = {
       const formattedStartDate = format(startDate, 'yyyy-MM-dd');
       const formattedEndDate = format(endDate, 'yyyy-MM-dd');
       
-      const response = await api.get('/api/mining-operations/chemicals-usage/', {
+      const response = await api.get('/mining-operations/chemicals-usage/', {
         params: {
           from_date: formattedStartDate,
           to_date: formattedEndDate,
@@ -650,109 +566,22 @@ export const dashboardService = {
   },
 
   // Get dashboard data
-  async fetchDashboardData(startDate: Date, endDate: Date): Promise<DashboardData> {
+  async getDashboardData({ from_date, to_date }: DateRangeParams): Promise<DashboardData> {
     try {
-      const formattedStartDate = format(startDate, 'yyyy-MM-dd');
-      const formattedEndDate = format(endDate, 'yyyy-MM-dd');
-      
-      const response = await api.get('/api/mining-operations/dashboard-data/', {
-        params: {
-          from_date: formattedStartDate,
-          to_date: formattedEndDate,
-        }
+      const response = await api.get('/mining-operations/dashboard-data/', {
+        params: { from_date, to_date }
       });
-      const data = response.data;
-      
-      // Initialize chemicals data if not present
-      if (!data.chemicals) {
-        data.chemicals = {
-          data: [],
-          summary: {
-            total_cost: 0,
-            most_used_chemical: '',
-            avg_daily_cost: 0,
-            cost_trend: 0
-          }
-        };
-      }
-      
-      return data;
+
+      return response.data;
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      return {
-        production: {
-          data: [],
-          summary: {
-            avg_tonnage_crushed: 0,
-            avg_tonnage_hoisted: 0,
-            avg_recovery_rate: 0,
-            avg_efficiency: 0,
-            trend_tonnage_crushed: 0,
-            trend_recovery_rate: 0,
-          },
-        },
-        safety: {
-          data: [],
-          summary: {
-            total_incidents: 0,
-            days_without_incident: 0,
-            severity_breakdown: {
-              low: 0,
-              medium: 0,
-              high: 0,
-              critical: 0,
-            },
-          },
-        },
-        explosives: {
-          data: [],
-          summary: { total_value: 0, latest_inventory: { anfo: 0, emulsion: 0 } }
-        },
-        stockpile: {
-          data: [],
-          summary: { total_ore: 0, total_waste: 0, avg_grade: 0 }
-        },
-        expenses: {
-          data: [],
-          summary: { total: 0, by_category: {} }
-        },
-        labor: {
-          data: [],
-          summary: { avg_productivity: 0, total_workers: 0, safety_incidents: 0 }
-        },
-        environmental: {
-          data: [],
-          summary: { avg_dust: 0, total_water: 0, rehabilitation_area: 0 }
-        },
-        energy: {
-          data: [],
-          summary: {
-            avg_electricity_kwh: 0,
-            avg_electricity_cost: 0,
-            avg_diesel_liters: 0,
-            avg_diesel_cost: 0,
-            avg_total_cost: 0,
-            trend_electricity: 0,
-            trend_diesel: 0,
-            trend_cost: 0,
-          },
-        },
-        chemicals: {
-          data: [],
-          summary: {
-            total_cost: 0,
-            most_used_chemical: '',
-            avg_daily_cost: 0,
-            cost_trend: 0
-          }
-        }
-      };
+      throw error;
     }
   },
 
   getDashboardData: async (params: DateRangeParams): Promise<DashboardData> => {
     try {
-      const response = await api.get('/api/mining-operations/dashboard-data/', {
+      const response = await api.get('/mining-operations/dashboard-data/', {
         params: params
       });
       return response.data;
@@ -764,7 +593,7 @@ export const dashboardService = {
 
   getEnergyUsage: async (params: DateRangeParams) => {
     try {
-      const response = await api.get('/api/dashboard/energy-usage/', {
+      const response = await api.get('/energy-usage/', {
         params: params
       });
       return response.data;
@@ -776,7 +605,7 @@ export const dashboardService = {
 
   getChemicalsUsage: async (params: DateRangeParams) => {
     try {
-      const response = await api.get('/api/mining-operations/chemicals-usage/', {
+      const response = await api.get('/mining-operations/chemicals-usage/', {
         params: params
       });
       return response.data;
@@ -787,17 +616,449 @@ export const dashboardService = {
   },
 
   // Get safety incidents data
-  getSafetyData: async (params: DateRangeParams): Promise<SafetyData> => {
+  getSafetyData: async ({ from_date, to_date, page = 0, rowsPerPage = 25 }: DateRangeParams & { page?: number; rowsPerPage?: number } = {}) => {
     try {
-      const response = await api.get('/api/safety-incidents/', {
-        params: params
+      const params = new URLSearchParams();
+      if (from_date) params.append('from_date', from_date);
+      if (to_date) params.append('to_date', to_date);
+      params.append('offset', (page * rowsPerPage).toString());
+      params.append('limit', rowsPerPage.toString());
+      
+      console.log('Fetching safety incidents with params:', {
+        from_date,
+        to_date,
+        page,
+        rowsPerPage,
+        offset: page * rowsPerPage,
+        limit: rowsPerPage
       });
+      
+      const response = await api.get(`/mining-operations/safety/?${params.toString()}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching safety data:', error);
       throw error;
     }
   },
+};
+
+export const goldProductionService = {
+  // Get gold production data
+  getGoldProduction: async ({ from_date, to_date }: DateRangeParams) => {
+    try {
+      const params = new URLSearchParams();
+      if (from_date) params.append('from_date', from_date);
+      if (to_date) params.append('to_date', to_date);
+      const response = await api.get(`/mining-operations/gold-production/?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching gold production data:', error);
+      throw error;
+    }
+  },
+
+  // Create new production record
+  createRecord: async (data: any) => {
+    try {
+      const response = await api.post('/mining-operations/gold-production/create/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating production record:', error);
+      throw error;
+    }
+  },
+
+  // Update production record
+  updateRecord: async (data: any) => {
+    try {
+      const response = await api.put('/mining-operations/gold-production/update/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating production record:', error);
+      throw error;
+    }
+  },
+
+  // Delete production record
+  deleteRecord: async (date: string) => {
+    try {
+      const response = await api.delete(`/mining-operations/gold-production/delete/${date}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting production record:', error);
+      throw error;
+    }
+  }
+};
+
+export const energyUsageService = {
+  getEnergyUsage: async ({ from_date, to_date }: DateRangeParams) => {
+    try {
+      const params = new URLSearchParams();
+      if (from_date) params.append('from_date', from_date);
+      if (to_date) params.append('to_date', to_date);
+      
+      console.log('Fetching energy usage with params:', params.toString());
+      const response = await api.get(`/mining-operations/energy-usage/?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching energy usage:', error);
+      throw error;
+    }
+  },
+
+  createEnergyUsage: async (data: any) => {
+    try {
+      console.log('Creating energy usage with data:', data);
+      const response = await api.post('/mining-operations/energy-usage/create/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating energy usage record:', error);
+      if (error.response?.status === 400 && error.response?.data?.error) {
+        // If it's a known error (like duplicate date), pass it through
+        throw new Error(error.response.data.error);
+      }
+      throw error;
+    }
+  },
+
+  updateEnergyUsage: async (data: any) => {
+    try {
+      // Calculate total cost
+      const electricityCost = Number(data.electricity_cost);
+      const dieselCost = Number(data.diesel_cost);
+      const totalCost = electricityCost + dieselCost;
+
+      const updateData = {
+        ...data,
+        electricity_kwh: Number(data.electricity_kwh),
+        electricity_cost: electricityCost,
+        diesel_liters: Number(data.diesel_liters),
+        diesel_cost: dieselCost,
+        total_cost: totalCost,
+      };
+      
+      console.log('Sending update request with data:', updateData);
+      const response = await api.put('/mining-operations/energy-usage/update/', updateData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating energy usage record:', error);
+      if (error.response?.status === 400 && error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw error;
+    }
+  },
+
+  deleteEnergyUsage: async (id: number) => {
+    try {
+      if (!id) {
+        throw new Error('Record ID is required for deletion');
+      }
+      const response = await api.delete(`/mining-operations/energy-usage/delete/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting energy usage record:', error);
+      throw error;
+    }
+  }
+};
+
+export const safetyService = {
+  // Get safety incidents data
+  getSafetyIncidents: async ({ from_date, to_date, page = 0, rowsPerPage = 25 }: DateRangeParams & { page?: number; rowsPerPage?: number }) => {
+    try {
+      const params = new URLSearchParams();
+      if (from_date) params.append('from_date', from_date);
+      if (to_date) params.append('to_date', to_date);
+      params.append('offset', (page * rowsPerPage).toString());
+      params.append('limit', rowsPerPage.toString());
+      
+      console.log('Fetching safety incidents with params:', {
+        from_date,
+        to_date,
+        page,
+        rowsPerPage,
+        offset: page * rowsPerPage,
+        limit: rowsPerPage
+      });
+      
+      const response = await api.get(`/mining-operations/safety/?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching safety incidents:', error);
+      throw error;
+    }
+  },
+
+  // Create new safety incident
+  createIncident: async (data: Omit<SafetyIncident, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const response = await api.post('/mining-operations/safety/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating safety incident:', error);
+      throw error;
+    }
+  },
+
+  // Update safety incident
+  updateIncident: async (id: number, data: Partial<SafetyIncident>) => {
+    try {
+      const response = await api.put(`/mining-operations/safety/${id}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating safety incident:', error);
+      throw error;
+    }
+  },
+
+  // Delete safety incident
+  deleteIncident: async (id: number) => {
+    try {
+      const response = await api.delete(`/mining-operations/safety/${id}/delete/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting safety incident:', error);
+      throw error;
+    }
+  },
+
+  // Get all safety incidents for export
+  getAllSafetyIncidents: async ({ from_date, to_date }: DateRangeParams) => {
+    try {
+      const params = new URLSearchParams();
+      if (from_date) params.append('from_date', from_date);
+      if (to_date) params.append('to_date', to_date);
+      params.append('export', 'true'); // Signal to backend this is for export
+      params.append('limit', '1000'); // Set a high limit to get all records
+      
+      console.log('Fetching all safety incidents for export:', {
+        from_date,
+        to_date,
+        params: params.toString()
+      });
+      
+      const response = await api.get(`/mining-operations/safety/?${params.toString()}`);
+      console.log('Export response received:', {
+        totalIncidents: response.data?.summary?.total_incidents,
+        recordsCount: response.data?.recent_incidents?.length
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching all safety incidents:', error);
+      throw error;
+    }
+  },
+};
+
+export const departmentService = {
+  // Get all departments
+  getDepartments: async (): Promise<Department[]> => {
+    try {
+      const response = await api.get('/mining-operations/get_departments/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+      throw error;
+    }
+  },
+
+  // Get a single department
+  getDepartment: async (id: number): Promise<Department> => {
+    try {
+      const response = await api.get(`/mining-operations/departments/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching department:', error);
+      throw error;
+    }
+  },
+
+  // Create a department
+  createDepartment: async (data: DepartmentFormData): Promise<Department> => {
+    try {
+      const response = await api.post('/mining-operations/departments/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating department:', error);
+      throw error;
+    }
+  },
+
+  // Update a department
+  updateDepartment: async (id: number, data: Partial<DepartmentFormData>): Promise<Department> => {
+    try {
+      const response = await api.put(`/mining-operations/departments/${id}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating department:', error);
+      throw error;
+    }
+  },
+
+  // Delete a department
+  deleteDepartment: async (id: number): Promise<void> => {
+    try {
+      await api.delete(`/mining-operations/departments/${id}/delete/`);
+    } catch (error) {
+      console.error('Error deleting department:', error);
+      throw error;
+    }
+  }
+};
+
+export const chemicalService = {
+  // Get all chemicals
+  getChemicals: async (): Promise<Chemical[]> => {
+    try {
+      const response = await api.get('/chemicals/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching chemicals:', error);
+      throw error;
+    }
+  },
+
+  // Get a single chemical
+  getChemical: async (id: number): Promise<Chemical> => {
+    try {
+      const response = await api.get(`/chemicals/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching chemical:', error);
+      throw error;
+    }
+  },
+
+  // Create a new chemical
+  createChemical: async (data: ChemicalFormData): Promise<Chemical> => {
+    try {
+      const response = await api.post('/chemicals/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating chemical:', error);
+      throw error;
+    }
+  },
+
+  // Update a chemical
+  updateChemical: async (id: number, data: Partial<ChemicalFormData>): Promise<Chemical> => {
+    try {
+      const response = await api.patch(`/chemicals/${id}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating chemical:', error);
+      throw error;
+    }
+  },
+
+  // Delete a chemical
+  deleteChemical: async (id: number): Promise<void> => {
+    try {
+      await api.delete(`/chemicals/${id}/`);
+    } catch (error) {
+      console.error('Error deleting chemical:', error);
+      throw error;
+    }
+  },
+};
+
+// Chemicals service for managing mining chemicals
+export const chemicalsService = {
+  // Get chemicals
+  getChemicals: async () => {
+    try {
+      const response = await api.get('mining-operations/chemicals/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching chemicals:', error);
+      throw error;
+    }
+  },
+
+  // Create new chemical
+  createChemical: async (data: any) => {
+    try {
+      const response = await api.post('mining-operations/chemicals/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating chemical:', error);
+      throw error;
+    }
+  },
+
+  // Update chemical
+  updateChemical: async (id: number, data: any) => {
+    try {
+      const response = await api.put(`mining-operations/chemicals/${id}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating chemical:', error);
+      throw error;
+    }
+  },
+
+  // Delete chemical
+  deleteChemical: async (id: number) => {
+    try {
+      await api.delete(`mining-operations/chemicals/${id}/`);
+    } catch (error) {
+      console.error('Error deleting chemical:', error);
+      throw error;
+    }
+  }
+};
+
+// Equipment service for managing mining equipment
+export const equipmentService = {
+  // Get equipment
+  getEquipment() {
+    return api.get('/mining-operations/settings/equipment/').then((response) => response.data);
+  },
+
+  // Get departments
+  getDepartments() {
+    return api.get('/mining-operations/settings/departments/').then((response) => response.data);
+  },
+
+  // Create new equipment
+  createEquipment(data: any) {
+    const formData = {
+      ...data,
+      department: data.department_id  // Map department_id to department for API
+    };
+    return api.post('/mining-operations/settings/equipment/', formData).then((response) => response.data);
+  },
+
+  // Update equipment
+  updateEquipment(id: number, data: any) {
+    const formData = {
+      ...data,
+      department: data.department_id  // Map department_id to department for API
+    };
+    return api.put(`/mining-operations/settings/equipment/${id}/`, formData).then((response) => response.data);
+  },
+
+  // Delete equipment
+  deleteEquipment(id: number) {
+    return api.delete(`/mining-operations/settings/equipment/${id}/`);
+  },
+};
+
+export const fetchExplosivesData = async (params: DateRangeParams) => {
+  const response = await api.get('/explosives-data/', {
+    params: {
+      from_date: params.from_date,
+      to_date: params.to_date
+    }
+  });
+  return response.data;
+};
+
+export const fetchEquipmentStatus = async (params: DateRangeParams) => {
+  return null;
 };
 
 export default api;

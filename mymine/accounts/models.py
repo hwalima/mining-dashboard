@@ -16,6 +16,7 @@ class CustomUser(AbstractUser):
         ('analyst', 'Data Analyst'),
     )
 
+    username = None  # Remove username field
     email = models.EmailField(_('email address'), unique=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='operator')
     # Remove department field for now
@@ -23,14 +24,17 @@ class CustomUser(AbstractUser):
     profile_picture = models.FileField(upload_to='profile_pics/', null=True, blank=True)
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)
     is_two_factor_enabled = models.BooleanField(default=False)
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
     
     def __str__(self):
-        return f"{self.username} - {self.get_role_display()}"
+        return f"{self.email} - {self.get_role_display()}"
 
     class Meta:
         verbose_name = 'User'
         verbose_name_plural = 'Users'
-        ordering = ['username']
+        ordering = ['email']
 
 class UserActivity(models.Model):
     """
@@ -42,7 +46,7 @@ class UserActivity(models.Model):
     ip_address = models.GenericIPAddressField()
     
     def __str__(self):
-        return f"{self.user.username} - {self.action} at {self.timestamp}"
+        return f"{self.user.email} - {self.action} at {self.timestamp}"
 
     class Meta:
         verbose_name_plural = 'User Activities'

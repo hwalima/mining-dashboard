@@ -41,7 +41,15 @@ export const useExplosivesData = () => {
 
   return useQuery<ExplosivesResponse>({
     queryKey: ['explosives', fromDate, toDate],
-    queryFn: () => fetchWithAuth(`/api/explosives-data/?from_date=${fromDate}&to_date=${toDate}`),
+    queryFn: async () => {
+      const params = {
+        from_date: fromDate,
+        to_date: toDate,
+      };
+
+      const response = await fetchWithAuth('/api/explosives/', { params });
+      return response.data;
+    },
     retry: 1,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

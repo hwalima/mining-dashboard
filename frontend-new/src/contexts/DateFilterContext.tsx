@@ -28,9 +28,15 @@ export const getDateRangeByType = (type: DateRangeType): DateRange => {
         endDate: endOfDay(today),
       };
     case 'week':
+      const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 }); // Start week on Monday
+      const endOfCurrentWeek = endOfWeek(today, { weekStartsOn: 1 }); // End week on Sunday
+      console.log('Week date range:', {
+        start: startOfCurrentWeek.toISOString(),
+        end: endOfCurrentWeek.toISOString()
+      });
       return {
-        startDate: startOfWeek(today, { weekStartsOn: 1 }), // Start week on Monday
-        endDate: endOfWeek(today, { weekStartsOn: 1 }), // End week on Sunday
+        startDate: startOfCurrentWeek,
+        endDate: endOfCurrentWeek,
       };
     case 'month':
       return {
@@ -49,8 +55,8 @@ export const getDateRangeByType = (type: DateRangeType): DateRange => {
       };
     default:
       return {
-        startDate: new Date('2023-01-01'),
-        endDate: new Date('2024-12-13'),
+        startDate: startOfDay(today),
+        endDate: endOfDay(today),
       };
   }
 };

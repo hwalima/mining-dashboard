@@ -55,20 +55,13 @@ const menuItems: MenuItem[] = [
     subItems: [
       { text: 'Overview', icon: <TimelineIcon />, path: '/production' },
       { text: 'Equipment', icon: <BuildIcon />, path: '/equipment' },
-      { text: 'Efficiency', icon: <SpeedIcon />, path: '/efficiency' },
+      { text: 'Energy', icon: <SpeedIcon />, path: '/energy' },
     ]
   },
-  { 
-    text: 'Maintenance', 
-    icon: <ConstructionIcon />, 
-    subItems: [
-      { text: 'Equipment', icon: <BuildIcon />, path: '/equipment' },
-      { text: 'Chemicals', icon: <ScienceIcon />, path: '/chemicals' },
-    ]
-  },
-  { text: 'Mining Analytics', icon: <AnalyticsIcon />, path: '/mining-analytics' },
-  { text: 'Reports', icon: <AssessmentIcon />, path: '/reports' },
   { text: 'Safety', icon: <SecurityIcon />, path: '/safety' },
+  { text: 'Mining Analytics', icon: <AnalyticsIcon />, path: '/analytics' },
+  { text: 'Chemicals', icon: <ScienceIcon />, path: '/chemicals' },
+  { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
 ];
 
 interface SidebarProps {
@@ -93,7 +86,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
 
   const isCurrentPath = (path: string) => location.pathname === path;
 
-  const ListItemComponent = motion(ListItem);
+  const ListItemComponent = motion.create(ListItem);
 
   return (
     <Drawer
@@ -250,24 +243,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       <Divider sx={{ my: 2, opacity: 0.1 }} />
 
       <List>
-        <ListItemComponent
-          button
-          onClick={() => handleNavigation('/settings')}
-          sx={{
-            mx: 1,
-            borderRadius: 1,
-            mb: 0.5,
-            '&:hover': {
-              backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.3 : 0.2),
-            },
-          }}
-        >
-          <ListItemIcon sx={{ minWidth: 40 }}>
-            <SettingsIcon />
-          </ListItemIcon>
-          <ListItemText primary="Settings" />
-        </ListItemComponent>
-
         <ListItemComponent
           button
           onClick={() => handleNavigation('/help')}

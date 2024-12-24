@@ -3,13 +3,6 @@ import { Widget } from '../types/dashboard';
 
 const defaultWidgets: Widget[] = [
   {
-    id: 'equipment',
-    name: 'Equipment Status',
-    type: 'status',
-    isVisible: true,
-    description: 'Status of mining machinery and equipment'
-  },
-  {
     id: 'energy',
     name: 'Energy Consumption',
     type: 'chart',

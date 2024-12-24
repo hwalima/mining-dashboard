@@ -6,7 +6,7 @@ import SplashScreen from '../components/SplashScreen';
 import logoLight from '../assets/icon light background.png';
 
 export default function Login() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,7 +20,7 @@ export default function Login() {
     setLoading(true);
     
     try {
-      await login(username, password);
+      await login(email, password);
       setShowSplash(true);
     } catch (err) {
       console.error('Login error:', err);
@@ -143,12 +143,13 @@ export default function Login() {
                   </Alert>
                 )}
                 <TextField
-                  required
+                  label="Email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   fullWidth
-                  label="Username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  disabled={loading}
+                  required
+                  margin="normal"
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       backgroundColor: 'rgba(255, 255, 255, 0.8)',

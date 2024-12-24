@@ -17,9 +17,18 @@ from drf_spectacular.views import (
 )
 from django.contrib.auth import views as auth_views
 from django.shortcuts import redirect
+from rest_framework import routers
+from dashboard.views import (
+    ChemicalViewSet,
+    ChemicalUsageViewSet,
+)
 
 def redirect_to_docs(request):
     return redirect('swagger-ui')
+
+router = routers.DefaultRouter()
+router.register(r'chemicals', ChemicalViewSet)
+router.register(r'chemical-usage', ChemicalUsageViewSet)
 
 urlpatterns = [
     # Root URL redirects to API docs
@@ -41,32 +50,10 @@ urlpatterns = [
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 
-    # App-specific URLs
-    path('', include('dashboard.urls')),  # Include dashboard URLs at root
-    path('accounts/', include('accounts.urls')),
+    # Include mining_operations URLs
     path('api/mining-operations/', include('mining_operations.urls')),
-
-    # Password Reset URLs
-    path('api/password_reset/', 
-         auth_views.PasswordResetView.as_view(
-             template_name='password_reset.html',
-             email_template_name='password_reset_email.html',
-             subject_template_name='password_reset_subject.txt'
-         ), 
-         name='password_reset'),
-    path('api/password_reset/done/', 
-         auth_views.PasswordResetDoneView.as_view(
-             template_name='password_reset_done.html'
-         ), 
-         name='password_reset_done'),
-    path('api/reset/<uidb64>/<token>/', 
-         auth_views.PasswordResetConfirmView.as_view(
-             template_name='password_reset_confirm.html'
-         ), 
-         name='password_reset_confirm'),
-    path('api/reset/done/', 
-         auth_views.PasswordResetCompleteView.as_view(
-             template_name='password_reset_complete.html'
-         ), 
-         name='password_reset_complete'),
+    path('api/dashboard/', include('dashboard.urls')),
+    
+    # Include router URLs
+    path('api/', include(router.urls)),
 ]

@@ -2,11 +2,12 @@ import axios from 'axios';
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: '', // Empty base URL since we're using Vite's proxy
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',  // Set base URL
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,  // Enable sending cookies
 });
 
 // Add a request interceptor

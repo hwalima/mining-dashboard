@@ -10,31 +10,37 @@ class Command(BaseCommand):
     def generate_status_logs(self, machinery, start_date, end_date):
         current_date = start_date
         current_status = 'Operational'
+        last_status_change = None
         
         while current_date <= end_date:
-            # 10% chance of status change each day
-            if random() < 0.1:
+            # Only create a log if status changes or it's the first entry
+            if random() < 0.1 and (not last_status_change or (current_date - last_status_change).days >= 1):
                 if current_status == 'Operational':
                     # When operational, can go to maintenance or out of service
-                    current_status = choice(['Under Maintenance', 'Out of Service'], weights=[0.8, 0.2])
+                    current_status = 'Under Maintenance' if random() < 0.8 else 'Out of Service'
                 else:
                     # When not operational, likely to return to operational
                     current_status = 'Operational' if random() < 0.7 else current_status
                 
+                # Create status log for the status change
                 EquipmentStatusLog.objects.create(
                     machinery=machinery,
                     status=current_status,
                     date=current_date,
                     notes=f'Status changed to {current_status}'
                 )
+                last_status_change = current_date
             
             current_date += timedelta(days=1)
 
     def generate_maintenance_records(self, machinery, start_date, end_date):
         current_date = start_date
+        maintenance_dates = set()  # Keep track of dates with maintenance
+        
         while current_date <= end_date:
             # Generate maintenance record with 20% probability for each day
-            if randint(1, 100) <= 20:
+            # but only if we haven't already created a record for this date
+            if current_date not in maintenance_dates and randint(1, 100) <= 20:
                 duration = uniform(2, 8)  # 2 to 8 hours
                 cost = duration * uniform(500, 1500)  # $500-$1500 per hour
                 
@@ -54,6 +60,8 @@ class Command(BaseCommand):
                     cost=round(cost, 2),
                     duration_hours=round(duration, 2)
                 )
+                maintenance_dates.add(current_date)
+            
             current_date += timedelta(days=1)
 
     def handle(self, *args, **kwargs):
@@ -65,7 +73,7 @@ class Command(BaseCommand):
 
         # Define date range
         start_date = datetime(2023, 1, 1).date()
-        end_date = datetime(2024, 12, 12).date()
+        end_date = datetime(2024, 12, 23).date()  # Updated to Dec 23, 2024
 
         # Define equipment types and their efficiency ranges
         equipment_types = {
@@ -90,11 +98,14 @@ class Command(BaseCommand):
                 last_maintenance = start_date + timedelta(days=randint(0, 30))
                 next_maintenance = last_maintenance + timedelta(days=90)
                 
-                status = choice([
-                    ('Operational', 0.7),
-                    ('Under Maintenance', 0.2),
-                    ('Out of Service', 0.1)
-                ], weights=[0.7, 0.2, 0.1])[0]
+                # Randomly assign status based on probabilities
+                rand_val = random()
+                if rand_val < 0.7:
+                    status = 'Operational'
+                elif rand_val < 0.9:
+                    status = 'Under Maintenance'
+                else:
+                    status = 'Out of Service'
 
                 machinery = Machinery.objects.create(
                     name=f'{eq_type} {i}',
@@ -106,10 +117,8 @@ class Command(BaseCommand):
                     _next_maintenance_due=next_maintenance
                 )
 
-                # Generate maintenance history
-                self.generate_maintenance_records(machinery, start_date, end_date)
-                
-                # Generate status logs
+                # Generate status logs and maintenance records
                 self.generate_status_logs(machinery, start_date, end_date)
+                self.generate_maintenance_records(machinery, start_date, end_date)
 
         self.stdout.write(self.style.SUCCESS('Successfully seeded equipment data'))

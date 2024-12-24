@@ -29,20 +29,17 @@ def seed_gold_data():
             
             # Calculate derived values
             tonnage_hoisted = base_tonnage * (random.uniform(0.90, 0.98))
-            tonnage_milled = tonnage_hoisted * (random.uniform(0.90, 0.98))
-            smelted_gold = (tonnage_milled * random.uniform(0.005, 0.008) * (recovery_rate/100))
+            smelted_gold = (tonnage_hoisted * random.uniform(0.005, 0.008) * (recovery_rate/100))
             gross_profit = smelted_gold * gold_price
             
             DailyProductionLog.objects.create(
                 date=current_date,
                 total_tonnage_crushed=Decimal(str(round(base_tonnage, 2))),
                 total_tonnage_hoisted=Decimal(str(round(tonnage_hoisted, 2))),
-                total_tonnage_milled=Decimal(str(round(tonnage_milled, 2))),
                 gold_recovery_rate=Decimal(str(round(recovery_rate, 2))),
                 operational_efficiency=Decimal(str(round(efficiency, 2))),
                 smelted_gold=Decimal(str(round(smelted_gold, 2))),
                 gold_price=Decimal(str(round(gold_price, 2))),
-                gross_profit=Decimal(str(round(gross_profit, 2))),
                 notes=f'Production data for {current_date}'
             )
             print(f'Created data for {current_date}')

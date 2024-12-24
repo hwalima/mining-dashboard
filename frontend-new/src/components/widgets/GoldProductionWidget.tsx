@@ -30,41 +30,16 @@ import TrendIndicator from '../common/TrendIndicator';
 import { useGoldProductionData } from '../../hooks/useGoldProductionData';
 import { alpha } from '@mui/material/styles';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { format, differenceInDays, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { format } from 'date-fns';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import RecyclingIcon from '@mui/icons-material/Recycling';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import DiamondIcon from '@mui/icons-material/Diamond';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
-import { useDateFilterContext } from '../../contexts/DateFilterContext';
 
 const GoldProductionWidget: React.FC = () => {
   const theme = useTheme();
   const { data, isLoading, error } = useGoldProductionData();
-  const { dateRange } = useDateFilterContext();
-  const daysDifference = differenceInDays(dateRange.endDate, dateRange.startDate);
-
-  // Filter data based on date range
-  const filteredData = React.useMemo(() => {
-    if (!data?.data) return [];
-    return data.data.filter(item => 
-      isWithinInterval(new Date(item.date), {
-        start: dateRange.startDate,
-        end: dateRange.endDate
-      })
-    ).slice().reverse();
-  }, [data, dateRange]);
-
-  const formatDate = (date: string) => {
-    if (daysDifference <= 31) {
-      return format(new Date(date), 'MMM d');
-    } else {
-      const itemDate = new Date(date);
-      const weekStart = startOfWeek(itemDate);
-      const weekEnd = endOfWeek(itemDate);
-      return `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`;
-    }
-  };
 
   const glassEffect = {
     background: theme.palette.mode === 'dark'
@@ -115,7 +90,7 @@ const GoldProductionWidget: React.FC = () => {
     } else if (metric.toLowerCase().includes('tonnage')) {
       return `${Number(value).toFixed(2)} t`;
     } else if (metric.toLowerCase().includes('smelted')) {
-      return `${Number(value).toFixed(2)} kg`;
+      return `${Number(value).toFixed(2)} g`;
     } else if (metric.toLowerCase().includes('profit')) {
       return `$${Number(value).toFixed(2)}`;
     } else if (metric.toLowerCase().includes('price')) {
@@ -133,7 +108,7 @@ const GoldProductionWidget: React.FC = () => {
           minWidth: 200,
         }}>
           <Typography variant="subtitle2" color="textSecondary">
-            {label}
+            {format(new Date(label), 'MMM d, yyyy')}
           </Typography>
           {payload.map((entry: any) => (
             <Box key={entry.name} sx={{ mt: 1 }}>
@@ -261,22 +236,18 @@ const GoldProductionWidget: React.FC = () => {
                     </IconButton>
                   </Typography>
                   <ResponsiveContainer width="100%" height={400}>
-                    <ComposedChart data={filteredData}>
+                    <ComposedChart data={data.data.slice().reverse()}>
                       <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
                       <XAxis 
                         dataKey="date" 
-                        tickFormatter={formatDate}
+                        tickFormatter={(date) => format(new Date(date), 'MMM d')}
                         tick={{ fill: theme.palette.text.secondary }}
-                        interval={0}
-                        angle={-45}
-                        textAnchor="end"
-                        height={60}
                       />
                       <YAxis 
                         yAxisId="left"
                         tick={{ fill: theme.palette.text.secondary }}
                         label={{ 
-                          value: 'Gold (kg)', 
+                          value: 'Gold (g)', 
                           angle: -90, 
                           position: 'insideLeft',
                           fill: theme.palette.text.secondary 
@@ -297,10 +268,10 @@ const GoldProductionWidget: React.FC = () => {
                       <Legend />
                       <Area
                         type="monotone"
-                        stroke="#FFD700"
                         dataKey="smelted_gold"
                         name="Smelted Gold"
                         fill={alpha('#FFD700', 0.2)}
+                        stroke="#FFD700"
                         yAxisId="left"
                       />
                       <Line
@@ -331,16 +302,12 @@ const GoldProductionWidget: React.FC = () => {
                     </IconButton>
                   </Typography>
                   <ResponsiveContainer width="100%" height={400}>
-                    <ComposedChart data={filteredData}>
+                    <ComposedChart data={data.tonnage_data.slice().reverse()}>
                       <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
                       <XAxis 
                         dataKey="date" 
-                        tickFormatter={formatDate}
+                        tickFormatter={(date) => format(new Date(date), 'MMM d')}
                         tick={{ fill: theme.palette.text.secondary }}
-                        interval={0}
-                        angle={-45}
-                        textAnchor="end"
-                        height={60}
                       />
                       <YAxis 
                         tick={{ fill: theme.palette.text.secondary }}
@@ -355,21 +322,21 @@ const GoldProductionWidget: React.FC = () => {
                       <Legend />
                       <Line
                         type="monotone"
-                        dataKey="total_tonnage_crushed"
+                        dataKey="crushed"
                         name="Crushed"
                         stroke="#FF9800"
                         strokeWidth={2}
                       />
                       <Line
                         type="monotone"
-                        dataKey="total_tonnage_hoisted"
+                        dataKey="hoisted"
                         name="Hoisted"
                         stroke="#E91E63"
                         strokeWidth={2}
                       />
                       <Line
                         type="monotone"
-                        dataKey="total_tonnage_milled"
+                        dataKey="milled"
                         name="Milled"
                         stroke="#9C27B0"
                         strokeWidth={2}

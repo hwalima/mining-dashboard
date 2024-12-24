@@ -1,110 +1,86 @@
-import { RouterProvider, createBrowserRouter, Outlet } from 'react-router-dom';
+import React from 'react';
+import { 
+  BrowserRouter as Router, 
+  Routes, 
+  Route, 
+  Navigate, 
+  Outlet,
+  createRoutesFromElements
+} from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { DashboardProvider } from './contexts/DashboardContext';
 import { DateFilterProvider } from './contexts/DateFilterContext';
+import { CompanySettingsProvider } from './contexts/CompanySettingsContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import DynamicFavicon from './components/DynamicFavicon';
 
 // Import pages
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Machinery from './pages/Machinery';
-import Profile from './pages/Profile';
-import Equipment from './pages/Equipment';
 import Production from './pages/Production';
-import Chemicals from './pages/Chemicals';
-import Reports from './pages/Reports';
 import Safety from './pages/Safety';
+import Energy from './pages/Energy';
+import Settings from './pages/Settings';
+import NotFound from './pages/NotFound';
 import MiningAnalytics from './pages/MiningAnalytics';
+import ChemicalsManagement from './pages/ChemicalsManagement';
 
-// Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
       retry: 1,
       refetchOnWindowFocus: false,
     },
   },
 });
 
-// Root layout with providers
-const RootLayout = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <ThemeProvider>
+const ProtectedLayout = () => {
+  return (
+    <ThemeProvider>
+      <CompanySettingsProvider>
         <DashboardProvider>
           <DateFilterProvider>
-            <Outlet />
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <Outlet />
+            </LocalizationProvider>
           </DateFilterProvider>
         </DashboardProvider>
-      </ThemeProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+      </CompanySettingsProvider>
+    </ThemeProvider>
+  );
+};
 
-// Router configuration with future flags
-const router = createBrowserRouter(
-  [
-    {
-      element: <RootLayout />,
-      children: [
-        {
-          path: '/',
-          element: <Dashboard />,
-        },
-        {
-          path: '/login',
-          element: <Login />,
-        },
-        {
-          path: '/dashboard',
-          element: <Dashboard />,
-        },
-        {
-          path: '/machinery',
-          element: <Machinery />,
-        },
-        {
-          path: '/production',
-          element: <Production />,
-        },
-        {
-          path: '/chemicals',
-          element: <Chemicals />,
-        },
-        {
-          path: '/reports',
-          element: <Reports />,
-        },
-        {
-          path: '/safety',
-          element: <Safety />,
-        },
-        {
-          path: '/profile',
-          element: <Profile />,
-        },
-        {
-          path: '/equipment',
-          element: <Equipment />,
-        },
-        {
-          path: '/mining-analytics',
-          element: <MiningAnalytics />,
-        },
-      ],
-    },
-  ],
-  {
-    future: {
-      v7_startTransition: true,
-    },
-  }
-);
-
-// App component
-const App = () => <RouterProvider router={router} />;
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ThemeProvider>
+          <CompanySettingsProvider>
+            <DynamicFavicon />
+            <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/" element={<ProtectedLayout />}>
+                  <Route index element={<Navigate to="/dashboard" replace />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="production" element={<Production />} />
+                  <Route path="safety" element={<Safety />} />
+                  <Route path="energy" element={<Energy />} />
+                  <Route path="settings" element={<Settings />} />
+                  <Route path="analytics" element={<MiningAnalytics />} />
+                  <Route path="chemicals" element={<ChemicalsManagement />} />
+                  <Route path="*" element={<NotFound />} />
+                </Route>
+              </Routes>
+            </Router>
+          </CompanySettingsProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

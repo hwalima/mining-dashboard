@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { fetchWithAuth } from '../utils/api';
 import { useDateFilterContext } from '../contexts/DateFilterContext';
 
@@ -37,14 +37,26 @@ const defaultChemicalsData: ChemicalsResponse = {
 
 export const useChemicalsData = () => {
   const { dateRange } = useDateFilterContext();
-  const fromDate = format(dateRange.startDate, 'yyyy-MM-dd');
-  const toDate = format(dateRange.endDate, 'yyyy-MM-dd');
+  
+  // If the selected date is in the future or we have no data for it,
+  // default to the last 7 days up to today
+  const today = new Date();
+  const defaultEndDate = today;
+  const defaultStartDate = subDays(today, 7);
+
+  const fromDate = format(dateRange.startDate > today ? defaultStartDate : dateRange.startDate, 'yyyy-MM-dd');
+  const toDate = format(dateRange.endDate > today ? defaultEndDate : dateRange.endDate, 'yyyy-MM-dd');
+
+  console.log('Fetching chemicals data for date range:', { fromDate, toDate });
 
   return useQuery<ChemicalsResponse>({
     queryKey: ['chemicals', fromDate, toDate],
     queryFn: async () => {
       try {
-        const response = await fetchWithAuth(`/api/chemicals-usage/?from_date=${fromDate}&to_date=${toDate}`);
+        const url = `/api/dashboard/api/chemicals-usage/?from_date=${fromDate}&to_date=${toDate}`;
+        console.log('Fetching chemicals data from:', url);
+        const response = await fetchWithAuth(url);
+        console.log('Chemicals data response:', response);
         return response || defaultChemicalsData;
       } catch (error) {
         console.error('Error fetching chemicals data:', error);

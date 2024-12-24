@@ -3,7 +3,7 @@ import { Box, CssBaseline } from '@mui/material';
 import Topbar from './Topbar';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useThemeContext } from '../../contexts/ThemeContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,7 +11,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { isDarkMode, toggleTheme } = useTheme();
+  const { darkMode, toggleDarkMode } = useThemeContext();
 
   const handleSidebarOpen = () => {
     setSidebarOpen(true);
@@ -35,8 +35,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <CssBaseline />
       <Topbar 
         onMenuClick={handleSidebarOpen}
-        onThemeToggle={toggleTheme}
-        isDarkMode={isDarkMode}
+        onThemeToggle={toggleDarkMode}
+        isDarkMode={darkMode}
       />
       <Box 
         sx={{ 

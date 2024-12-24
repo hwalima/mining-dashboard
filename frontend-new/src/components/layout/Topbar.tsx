@@ -28,21 +28,24 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-
-const logoLight = new URL('../../assets/icon light background.png', import.meta.url).href;
-const logoDark = new URL('../../assets/Icon dark background.png', import.meta.url).href;
+import { useCompanySettings } from '../../contexts/CompanySettingsContext';
 
 interface TopbarProps {
   onMenuClick: () => void;
   onThemeToggle: () => void;
+  isDarkMode: boolean;
 }
 
-const Topbar: React.FC<TopbarProps> = ({ onMenuClick, onThemeToggle }) => {
+const Topbar: React.FC<TopbarProps> = ({ onMenuClick, onThemeToggle, isDarkMode }) => {
   const navigate = useNavigate();
   const theme = useTheme();
+  const { settings } = useCompanySettings();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
-  const currentLogo = theme.palette.mode === 'dark' ? logoDark : logoLight;
+
+  const currentLogo = isDarkMode 
+    ? (settings?.darkLogo || new URL('../../assets/Icon dark background.png', import.meta.url).href)
+    : (settings?.lightLogo || new URL('../../assets/icon light background.png', import.meta.url).href);
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -112,7 +115,7 @@ const Topbar: React.FC<TopbarProps> = ({ onMenuClick, onThemeToggle }) => {
               }}
             />
             <Typography variant="h6" noWrap component="div">
-              Mining Operations Dashboard
+              {settings?.name || 'Mining Operations Dashboard'}
             </Typography>
           </Box>
         </Box>

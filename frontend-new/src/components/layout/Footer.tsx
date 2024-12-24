@@ -9,44 +9,48 @@ import {
   LocationOn,
   Language
 } from '@mui/icons-material';
-
-const logoLight = new URL('../../assets/icon light background.png', import.meta.url).href;
-const logoDark = new URL('../../assets/Icon dark background.png', import.meta.url).href;
+import { useCompanySettings } from '../../contexts/CompanySettingsContext';
+import { useThemeContext } from '../../contexts/ThemeContext';
 
 const Footer: React.FC = () => {
   const theme = useTheme();
+  const { darkMode } = useThemeContext();
+  const { settings } = useCompanySettings();
   const currentYear = new Date().getFullYear();
-  const currentLogo = theme.palette.mode === 'dark' ? logoDark : logoLight;
+
+  const currentLogo = darkMode
+    ? (settings?.darkLogo || new URL('../../assets/Icon dark background.png', import.meta.url).href)
+    : (settings?.lightLogo || new URL('../../assets/icon light background.png', import.meta.url).href);
 
   const socialLinks = [
-    { icon: <Facebook />, url: 'https://facebook.com/hwalimadigital', tooltip: 'Follow us on Facebook' },
-    { icon: <Twitter />, url: 'https://twitter.com/hwalimadigital', tooltip: 'Follow us on Twitter' },
-    { icon: <LinkedIn />, url: 'https://linkedin.com/company/hwalimadigital', tooltip: 'Connect on LinkedIn' },
+    { icon: <Facebook />, url: 'https://facebook.com', tooltip: 'Follow us on Facebook' },
+    { icon: <Twitter />, url: 'https://twitter.com', tooltip: 'Follow us on Twitter' },
+    { icon: <LinkedIn />, url: 'https://linkedin.com/company', tooltip: 'Connect on LinkedIn' },
   ];
 
   const footerSections = [
     {
       title: 'Contact Us',
       items: [
-        { icon: <Email />, text: 'info@hwalima.digital', link: 'mailto:info@hwalima.digital' },
-        { icon: <Phone />, text: '+27 78 542 5978', link: 'tel:+27785425978' },
-        { icon: <LocationOn />, text: 'Johannesburg, South Africa' },
+        { icon: <Email />, text: settings?.email || 'info@company.com', link: `mailto:${settings?.email || 'info@company.com'}` },
+        { icon: <Phone />, text: settings?.phone || '+1234567890', link: `tel:${settings?.phone || '+1234567890'}` },
+        { icon: <LocationOn />, text: settings?.address || 'Company Address' },
       ],
     },
     {
       title: 'Quick Links',
       items: [
-        { text: 'About Us', link: 'https://www.hwalima.digital/about' },
-        { text: 'Services', link: 'https://www.hwalima.digital/services' },
-        { text: 'Support', link: 'https://www.hwalima.digital/contacts/' },
+        { text: 'About Us', link: settings?.website ? `${settings.website}/about` : '#', external: true },
+        { text: 'Services', link: settings?.website ? `${settings.website}/services` : '#', external: true },
+        { text: 'Support', link: settings?.website ? `${settings.website}/contact` : '#', external: true },
       ],
     },
     {
       title: 'Legal',
       items: [
-        { text: 'Privacy Policy', link: 'https://www.hwalima.digital/privacy' },
-        { text: 'Terms of Service', link: 'https://www.hwalima.digital/terms' },
-        { text: 'Cookie Policy', link: 'https://www.hwalima.digital/cookies' },
+        { text: 'Privacy Policy', link: settings?.website ? `${settings.website}/privacy` : '#', external: true },
+        { text: 'Terms of Service', link: settings?.website ? `${settings.website}/terms` : '#', external: true },
+        { text: 'Cookie Policy', link: settings?.website ? `${settings.website}/cookies` : '#', external: true },
       ],
     },
   ];
@@ -97,7 +101,7 @@ const Footer: React.FC = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <img
                 src={currentLogo}
-                alt="Hwalima Digital Logo"
+                alt={settings?.name || 'Company Logo'}
                 style={{
                   height: '40px',
                   marginRight: '12px',
@@ -105,23 +109,25 @@ const Footer: React.FC = () => {
                 }}
               />
             </Box>
-            <Link 
-              href="https://www.hwalima.digital" 
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                color: theme.palette.primary.main,
-                textDecoration: 'none',
-                '&:hover': {
-                  textDecoration: 'underline'
-                }
-              }}
-            >
-              <Language sx={{ mr: 1 }} />
-              www.hwalima.digital
-            </Link>
+            {settings?.website && (
+              <Link 
+                href={settings.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  color: theme.palette.primary.main,
+                  textDecoration: 'none',
+                  '&:hover': {
+                    textDecoration: 'underline'
+                  }
+                }}
+              >
+                <Language sx={{ mr: 1 }} />
+                {settings.website.replace(/^https?:\/\//, '')}
+              </Link>
+            )}
           </Grid>
           {footerSections.map((section) => (
             <Grid item xs={12} sm={6} md={3} key={section.title}>
@@ -161,15 +167,15 @@ const Footer: React.FC = () => {
                   {item.link ? (
                     <Link
                       href={item.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      target={item.external ? "_blank" : undefined}
+                      rel={item.external ? "noopener noreferrer" : undefined}
                       sx={{
                         color: 'inherit',
                         textDecoration: 'none',
                         '&:hover': {
                           color: theme.palette.primary.main,
+                          textDecoration: 'underline',
                         },
-                        transition: 'color 0.2s',
                       }}
                     >
                       {item.text}
@@ -193,7 +199,7 @@ const Footer: React.FC = () => {
           }}
         >
           <Typography variant="body2" color="text.secondary">
-            {currentYear} Hwalima Digital. All rights reserved.
+            {currentYear} {settings?.name || 'Company Name'}. All rights reserved.
           </Typography>
         </Box>
 
@@ -208,12 +214,13 @@ const Footer: React.FC = () => {
           {socialLinks.map((social, index) => (
             <Tooltip key={index} title={social.tooltip}>
               <IconButton
+                component="a"
                 href={social.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 size="small"
                 sx={{
-                  color: theme.palette.text.secondary,
+                  color: 'inherit',
                   '&:hover': {
                     color: theme.palette.primary.main,
                     transform: 'translateY(-2px)',

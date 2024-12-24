@@ -4,19 +4,20 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
-from datetime import timedelta
-from django.db.models import Sum, Avg, Count, F, Q, DecimalField, Max, Min
+from datetime import datetime, timedelta
+from django.db.models import Avg, Count, Sum, F, Q, DecimalField, Max, Min
 from django.db.models.functions import Cast
 from decimal import Decimal
 from .models import (
-    Machinery, ChemicalInventory, SafetyIncident, 
-    EnergyUsage, MaintenanceRecord, EquipmentStatusLog, 
-    ChemicalUsage, ExplosivesUsage, ExplosivesInventory, EnvironmentalMetric
+    ChemicalInventory, SafetyIncident, 
+    EnergyUsage, ChemicalUsage, 
+    ExplosivesUsage, ExplosivesInventory, EnvironmentalMetric
 )
 from mining_operations.models import (
     DailyProductionLog, DailyChemicalsUsed, MiningChemical, 
     MiningDepartment, LaborMetric
 )
+from .serializers import ChemicalInventorySerializer, ChemicalUsageSerializer
 import datetime
 
 # Create your views here.
@@ -63,24 +64,11 @@ def get_daily_logs(request):
 @permission_classes([IsAuthenticated])
 def get_machinery_status(request):
     """
-    Get machinery status and maintenance information
+    This endpoint is deprecated and will be removed in a future update
     """
-    machinery = Machinery.objects.all()
-    
-    summary = {
-        'total_count': machinery.count(),
-        'operational_count': machinery.filter(status='Operational').count(),
-        'maintenance_count': machinery.filter(status='Under Maintenance').count(),
-        'efficiency_average': machinery.aggregate(Avg('efficiency'))['efficiency__avg'] or 0,
-        'maintenance_due': machinery.filter(next_maintenance__lte=timezone.now().date()).count()
-    }
-
     return Response({
-        'machinery': list(machinery.values(
-            'id', 'name', 'type', 'status', 'efficiency',
-            'last_maintenance', 'next_maintenance'
-        )),
-        'summary': summary
+        'status': 'deprecated',
+        'message': 'This endpoint is no longer available'
     })
 
 @api_view(['GET'])
@@ -193,7 +181,7 @@ def get_energy_usage(request):
         return Response({"error": "from_date and to_date are required"}, status=400)
 
     try:
-        # Convert string dates to date objects
+        # Parse dates from the request
         from_date = datetime.datetime.strptime(from_date, '%Y-%m-%d').date()
         to_date = datetime.datetime.strptime(to_date, '%Y-%m-%d').date()
         
@@ -248,7 +236,7 @@ def get_energy_usage(request):
         # Format the response to match frontend expectations
         response_data = {
             'data': [{
-                'date': item.date,
+                'date': item.date.strftime('%Y-%m-%d') if item.date else None,
                 'electricity_kwh': float(item.electricity_kwh),
                 'electricity_cost': float(item.electricity_cost),
                 'diesel_liters': float(item.diesel_liters),
@@ -282,124 +270,6 @@ def get_energy_usage(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def get_equipment_status(request):
-    """
-    Get equipment status data for a given date range
-    """
-    from_date = request.query_params.get('from_date')
-    to_date = request.query_params.get('to_date')
-
-    if not from_date or not to_date:
-        return Response({"error": "from_date and to_date are required"}, status=400)
-
-    try:
-        # Convert string dates to date objects
-        from_date = datetime.datetime.strptime(from_date, '%Y-%m-%d').date()
-        to_date = datetime.datetime.strptime(to_date, '%Y-%m-%d').date()
-        
-        # Get all machinery
-        machinery = Machinery.objects.all()
-        
-        # Get status logs for the period
-        status_logs = EquipmentStatusLog.objects.filter(
-            date__range=[from_date, to_date]
-        ).select_related('machinery')
-        
-        # Get the latest status for each machine in the period
-        latest_statuses = {}
-        for log in status_logs:
-            if log.machinery_id not in latest_statuses or log.date > latest_statuses[log.machinery_id]['date']:
-                latest_statuses[log.machinery_id] = {
-                    'status': log.status,
-                    'date': log.date
-                }
-        
-        # Calculate status counts based on period status
-        operational_count = sum(1 for status in latest_statuses.values() if status['status'] == 'Operational')
-        maintenance_count = sum(1 for status in latest_statuses.values() if status['status'] == 'Under Maintenance')
-        out_of_service_count = sum(1 for status in latest_statuses.values() if status['status'] == 'Out of Service')
-        
-        # Get maintenance records for the date range
-        maintenance_records = MaintenanceRecord.objects.filter(
-            date__range=[from_date, to_date]
-        ).select_related('machinery')
-        
-        # Calculate maintenance costs and hours
-        maintenance_costs = maintenance_records.aggregate(
-            total_cost=Sum('cost'),
-            total_hours=Sum('duration_hours')
-        )
-        total_maintenance_cost = maintenance_costs['total_cost'] or 0
-        total_maintenance_hours = maintenance_costs['total_hours'] or 0
-        
-        # Calculate average efficiency for the period
-        avg_efficiency = machinery.aggregate(Avg('efficiency'))['efficiency__avg'] or 0
-        
-        # Calculate trends
-        prev_from_date = from_date - (to_date - from_date)
-        prev_maintenance_records = MaintenanceRecord.objects.filter(
-            date__range=[prev_from_date, from_date - timedelta(days=1)]
-        )
-        
-        prev_maintenance_cost = prev_maintenance_records.aggregate(
-            Avg('cost')
-        )['cost__avg'] or total_maintenance_cost
-        
-        trend_maintenance_cost = float(total_maintenance_cost - prev_maintenance_cost)
-        
-        # Calculate efficiency trend
-        prev_efficiency = machinery.aggregate(Avg('efficiency'))['efficiency__avg'] or avg_efficiency
-        trend_efficiency = float(avg_efficiency - prev_efficiency)
-
-        # Prepare equipment data with status history
-        equipment_data = []
-        for machine in machinery:
-            # Get status logs for this machine in the period
-            machine_status_logs = status_logs.filter(machinery=machine).order_by('-date')
-            current_status = machine_status_logs.first().status if machine_status_logs.exists() else machine.status
-            
-            maintenance_history = maintenance_records.filter(
-                machinery=machine
-            ).order_by('-date').values('date', 'type', 'description', 'cost', 'duration_hours')
-            
-            equipment_data.append({
-                'id': machine.id,
-                'name': machine.name,
-                'type': machine.type,
-                'status': current_status,
-                'efficiency': float(machine.efficiency),
-                'last_maintenance': machine.last_maintenance,
-                'next_maintenance_due': machine.next_maintenance_due,
-                'operating_hours': float(machine.operating_hours),
-                'maintenance_history': list(maintenance_history),
-                'status_history': list(machine_status_logs.values('date', 'status', 'notes'))
-            })
-
-        response_data = {
-            'data': equipment_data,
-            'summary': {
-                'total_count': len(machinery),
-                'operational_count': operational_count,
-                'maintenance_count': maintenance_count,
-                'out_of_service_count': out_of_service_count,
-                'avg_efficiency': float(avg_efficiency),
-                'total_maintenance_cost': float(total_maintenance_cost),
-                'total_maintenance_hours': float(total_maintenance_hours),
-                'trend_efficiency': trend_efficiency,
-                'trend_maintenance_cost': trend_maintenance_cost
-            }
-        }
-
-        return Response(response_data)
-    except ValueError as e:
-        print(f"ValueError in get_equipment_status: {str(e)}")
-        return Response({"error": str(e)}, status=400)
-    except Exception as e:
-        print(f"Error in get_equipment_status: {str(e)}")
-        return Response({"error": "An error occurred while fetching equipment status"}, status=500)
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
 def get_gold_production(request):
     """
     Get gold production data for a given date range
@@ -411,29 +281,18 @@ def get_gold_production(request):
         return Response({"error": "from_date and to_date are required"}, status=400)
 
     try:
-        print(f"\n=== Processing gold production data request ===")
-        print(f"From: {from_date} To: {to_date}")
-        
         # Convert string dates to date objects
         from_date = datetime.datetime.strptime(from_date, '%Y-%m-%d').date()
         to_date = datetime.datetime.strptime(to_date, '%Y-%m-%d').date()
         
         # Calculate date range difference
         date_diff = (to_date - from_date).days + 1
-        print(f"Date range spans {date_diff} days")
-
+        
         # Get production data for the date range
         production_data = DailyProductionLog.objects.filter(
             date__range=[from_date, to_date]
         ).order_by('-date')
         
-        print(f"Found {production_data.count()} production records")
-        
-        # Print all records for debugging
-        for record in production_data:
-            print(f"Date: {record.date}, Crushed: {record.total_tonnage_crushed}t, " +
-                  f"Hoisted: {record.total_tonnage_hoisted}t, Recovery: {record.gold_recovery_rate}%")
-
         # Calculate period totals and averages
         totals = production_data.aggregate(
             total_crushed=Sum('total_tonnage_crushed'),
@@ -446,13 +305,6 @@ def get_gold_production(request):
         # Ensure we have values even if there's no data
         totals = {k: v or 0 for k, v in totals.items()}
         
-        print(f"\nPeriod totals and averages:")
-        print(f"Total Crushed: {totals['total_crushed']}t")
-        print(f"Total Hoisted: {totals['total_hoisted']}t")
-        print(f"Total Gold Smelted: {totals['total_gold_smelted']}g")
-        print(f"Average Recovery Rate: {totals['avg_recovery']}%")
-        print(f"Average Efficiency: {totals['avg_efficiency']}%")
-
         # Calculate daily averages
         daily_avg_crushed = totals['total_crushed'] / date_diff if date_diff > 0 else 0
         daily_avg_hoisted = totals['total_hoisted'] / date_diff if date_diff > 0 else 0
@@ -463,9 +315,6 @@ def get_gold_production(request):
         prev_production = DailyProductionLog.objects.filter(
             date__range=[prev_from_date, from_date - timedelta(days=1)]
         )
-        
-        print(f"\nPrevious period: {prev_from_date} to {from_date - timedelta(days=1)}")
-        print(f"Found {prev_production.count()} previous period records")
         
         prev_totals = prev_production.aggregate(
             prev_crushed=Sum('total_tonnage_crushed'),
@@ -487,12 +336,6 @@ def get_gold_production(request):
                                  (prev_totals['prev_gold_smelted'] / date_diff)) if date_diff > 0 else 0
         trend_recovery = float(totals['avg_recovery'] - prev_totals['prev_recovery'])
         trend_efficiency = float(totals['avg_efficiency'] - prev_totals['prev_efficiency'])
-
-        print(f"\nTrends:")
-        print(f"Crushed trend: {trend_crushed}t/day")
-        print(f"Hoisted trend: {trend_hoisted}t/day")
-        print(f"Recovery trend: {trend_recovery}%")
-        print(f"Efficiency trend: {trend_efficiency}%")
 
         response_data = {
             'data': [{
@@ -522,10 +365,8 @@ def get_gold_production(request):
 
         return Response(response_data)
     except ValueError as e:
-        print(f"ValueError in get_gold_production: {str(e)}")
         return Response({"error": str(e)}, status=400)
     except Exception as e:
-        print(f"Error in get_gold_production: {str(e)}")
         return Response({"error": "An error occurred while fetching production data"}, status=500)
 
 @api_view(['GET'])
@@ -645,7 +486,7 @@ def get_explosives_data(request):
         # Get date range from request
         from_date = request.query_params.get('from_date')
         to_date = request.query_params.get('to_date')
-
+        
         logger.info(f"Raw date params: from_date={from_date}, to_date={to_date}")
 
         if not from_date or not to_date:
@@ -1029,3 +870,26 @@ def get_environmental_metrics(request):
         return Response({
             'error': f'An error occurred: {str(e)}'
         }, status=500)
+
+class ChemicalViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for chemicals inventory that provides CRUD operations
+    """
+    queryset = ChemicalInventory.objects.all()
+    serializer_class = ChemicalInventorySerializer
+    permission_classes = [IsAuthenticated]
+
+class ChemicalUsageViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for chemical usage records that provides CRUD operations
+    """
+    queryset = ChemicalUsage.objects.all().order_by('-date', '-created_at')
+    serializer_class = ChemicalUsageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_destroy(self, instance):
+        # Restore the amount used back to the chemical's stock
+        chemical = instance.chemical
+        chemical.current_stock = chemical.current_stock + instance.amount_used
+        chemical.save()
+        instance.delete()

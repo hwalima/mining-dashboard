@@ -11,7 +11,6 @@ class DashboardWidget(models.Model):
     WIDGET_TYPES = (
         ('production_chart', 'Production Chart'),
         ('safety_summary', 'Safety Summary'),
-        ('equipment_status', 'Equipment Status'),
         ('chemical_inventory', 'Chemical Inventory'),
         ('financial_overview', 'Financial Overview')
     )
@@ -78,62 +77,7 @@ class NotificationLog(models.Model):
     def __str__(self):
         return f"{self.get_type_display()} for {self.user.username}"
 
-class Machinery(models.Model):
-    STATUS_CHOICES = [
-        ('Operational', 'Operational'),
-        ('Under Maintenance', 'Under Maintenance'),
-        ('Out of Service', 'Out of Service'),
-    ]
-    
-    name = models.CharField(max_length=100)
-    type = models.CharField(max_length=50)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Operational')
-    efficiency = models.DecimalField(max_digits=5, decimal_places=2, default=100.00)
-    operating_hours = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    last_maintenance = models.DateField(default=timezone.now)
-    _next_maintenance_due = models.DateField(default=timezone.now)
-
-    @property
-    def next_maintenance_due(self):
-        return self._next_maintenance_due
-
-    @next_maintenance_due.setter
-    def next_maintenance_due(self, value):
-        self._next_maintenance_due = value
-
-    def __str__(self):
-        return f"{self.name} - {self.status}"
-
-class MaintenanceRecord(models.Model):
-    machinery = models.ForeignKey(Machinery, on_delete=models.CASCADE, related_name='maintenance_records')
-    date = models.DateField()
-    type = models.CharField(max_length=50)
-    description = models.TextField()
-    cost = models.DecimalField(max_digits=10, decimal_places=2)
-    duration_hours = models.DecimalField(max_digits=5, decimal_places=2)
-
-    def __str__(self):
-        return f"{self.machinery.name} - {self.date} - {self.type}"
-
-class EquipmentStatusLog(models.Model):
-    machinery = models.ForeignKey(Machinery, on_delete=models.CASCADE, related_name='status_logs')
-    status = models.CharField(
-        max_length=20,
-        choices=[
-            ('Operational', 'Operational'),
-            ('Under Maintenance', 'Under Maintenance'),
-            ('Out of Service', 'Out of Service'),
-        ]
-    )
-    date = models.DateField()
-    notes = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['-date', '-created_at']
-
-    def __str__(self):
-        return f"{self.machinery.name} - {self.status} on {self.date}"
+# Equipment-related models have been removed
 
 class ChemicalInventory(models.Model):
     name = models.CharField(max_length=200)

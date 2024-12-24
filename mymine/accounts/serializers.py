@@ -9,12 +9,13 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
     Custom token serializer to include additional user information
     """
+    username_field = 'email'
+
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
         
         # Add custom claims
-        token['username'] = user.username
         token['email'] = user.email
         token['role'] = user.role
         
@@ -29,7 +30,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'confirm_password', 'role')
+        fields = ('email', 'password', 'confirm_password', 'role')
         extra_kwargs = {
             'email': {'required': True},
         }
@@ -51,7 +52,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         """
         validated_data.pop('confirm_password')
         user = User.objects.create_user(
-            username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
             role=validated_data.get('role', 'operator')
@@ -64,5 +64,5 @@ class UserProfileSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'role', 'last_login', 'date_joined')
+        fields = ('id', 'email', 'role', 'last_login', 'date_joined')
         read_only_fields = ('id', 'last_login', 'date_joined')
