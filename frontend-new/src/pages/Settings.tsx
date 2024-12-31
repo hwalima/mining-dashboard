@@ -57,6 +57,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { departmentService } from '../services/api';
 import EquipmentTable from '../components/tables/EquipmentTable';
 import ChemicalsTable from '../components/settings/ChemicalsTable';
+import { zoneService } from '../services/api';
+import { Zone, ZoneFormData } from '../types/zone';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -96,6 +98,18 @@ const Settings: React.FC = () => {
     type: 'extraction' as Department['type'],
     description: '',
   });
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [openZoneDialog, setOpenZoneDialog] = useState(false);
+  const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
+  const [zoneFormData, setZoneFormData] = useState<ZoneFormData>({
+    name: '',
+    code: '',
+    area_type: 'extraction',
+    risk_level: 'low',
+    description: '',
+    max_occupancy: 0,
+    requires_certification: false,
+  });
   const lightLogoInputRef = useRef<HTMLInputElement>(null);
   const darkLogoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
@@ -117,6 +131,7 @@ const Settings: React.FC = () => {
 
   useEffect(() => {
     fetchDepartments();
+    fetchZones();
   }, []);
 
   useEffect(() => {
@@ -133,6 +148,15 @@ const Settings: React.FC = () => {
     } catch (error) {
       console.error('Error fetching departments:', error);
       // Add error state handling if needed
+    }
+  };
+
+  const fetchZones = async () => {
+    try {
+      const data = await zoneService.getZones();
+      setZones(data);
+    } catch (error) {
+      console.error('Error fetching zones:', error);
     }
   };
 
@@ -190,6 +214,63 @@ const Settings: React.FC = () => {
     }
   };
 
+  const handleOpenZoneDialog = (zone?: Zone) => {
+    if (zone) {
+      setSelectedZone(zone);
+      setZoneFormData({
+        name: zone.name,
+        code: zone.code,
+        area_type: zone.area_type,
+        risk_level: zone.risk_level,
+        description: zone.description,
+        max_occupancy: zone.max_occupancy,
+        requires_certification: zone.requires_certification,
+      });
+    } else {
+      setSelectedZone(null);
+      setZoneFormData({
+        name: '',
+        code: '',
+        area_type: 'extraction',
+        risk_level: 'low',
+        description: '',
+        max_occupancy: 0,
+        requires_certification: false,
+      });
+    }
+    setOpenZoneDialog(true);
+  };
+
+  const handleCloseZoneDialog = () => {
+    setOpenZoneDialog(false);
+    setSelectedZone(null);
+  };
+
+  const handleZoneSubmit = async () => {
+    try {
+      if (selectedZone) {
+        await zoneService.updateZone(selectedZone.id, zoneFormData);
+      } else {
+        await zoneService.createZone(zoneFormData);
+      }
+      handleCloseZoneDialog();
+      fetchZones();
+    } catch (error) {
+      console.error('Error saving zone:', error);
+    }
+  };
+
+  const handleZoneDelete = async (id: number) => {
+    if (window.confirm('Are you sure you want to delete this zone?')) {
+      try {
+        await zoneService.deleteZone(id);
+        fetchZones();
+      } catch (error) {
+        console.error('Error deleting zone:', error);
+      }
+    }
+  };
+
   const handleFileUpload = (type: 'lightLogo' | 'darkLogo' | 'favicon') => async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
@@ -224,6 +305,7 @@ const Settings: React.FC = () => {
               <Tab icon={<BuildIcon />} label="Equipment" />
               <Tab icon={<DataUsageIcon />} label="Chemicals" />
               <Tab icon={<BusinessIcon />} label="Departments" />
+              <Tab icon={<BusinessIcon />} label="Zones" />
               <Tab icon={<SecurityIcon />} label="Security" />
               <Tab icon={<NotificationsIcon />} label="Notifications" />
             </Tabs>
@@ -474,6 +556,65 @@ const Settings: React.FC = () => {
           </TabPanel>
 
           <TabPanel value={currentTab} index={4}>
+            {/* Zones Management */}
+            <Card>
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                  <Typography variant="h6">Zones</Typography>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => handleOpenZoneDialog()}
+                    sx={{
+                      borderRadius: '8px',
+                      background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                    }}
+                  >
+                    Add Zone
+                  </Button>
+                </Box>
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Code</TableCell>
+                        <TableCell>Area Type</TableCell>
+                        <TableCell>Risk Level</TableCell>
+                        <TableCell>Description</TableCell>
+                        <TableCell>Max Occupancy</TableCell>
+                        <TableCell>Requires Certification</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {zones.map((zone: Zone) => (
+                        <TableRow key={zone.id}>
+                          <TableCell>{zone.name}</TableCell>
+                          <TableCell>{zone.code}</TableCell>
+                          <TableCell>{zone.area_type}</TableCell>
+                          <TableCell>{zone.risk_level}</TableCell>
+                          <TableCell>{zone.description}</TableCell>
+                          <TableCell>{zone.max_occupancy}</TableCell>
+                          <TableCell>{zone.requires_certification ? 'Yes' : 'No'}</TableCell>
+                          <TableCell align="right">
+                            <IconButton onClick={() => handleOpenZoneDialog(zone)} size="small">
+                              <EditIcon />
+                            </IconButton>
+                            <IconButton onClick={() => handleZoneDelete(zone.id)} size="small" color="error">
+                              <DeleteIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          </TabPanel>
+
+          <TabPanel value={currentTab} index={5}>
             {/* Security Settings */}
             <Card>
               <CardContent>
@@ -498,7 +639,7 @@ const Settings: React.FC = () => {
             </Card>
           </TabPanel>
 
-          <TabPanel value={currentTab} index={5}>
+          <TabPanel value={currentTab} index={6}>
             {/* Notification Settings */}
             <Card>
               <CardContent>
@@ -579,6 +720,109 @@ const Settings: React.FC = () => {
             }}
           >
             {selectedDepartment ? 'Update' : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Zone Dialog */}
+      <Dialog 
+        open={openZoneDialog} 
+        onClose={handleCloseZoneDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            background: alpha(theme.palette.background.paper, 0.8),
+            backdropFilter: 'blur(8px)',
+          }
+        }}
+      >
+        <DialogTitle>
+          {selectedZone ? 'Edit Zone' : 'Add Zone'}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Name"
+              value={zoneFormData.name}
+              onChange={(e) => setZoneFormData({ ...zoneFormData, name: e.target.value })}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              fullWidth
+              label="Code"
+              value={zoneFormData.code}
+              onChange={(e) => setZoneFormData({ ...zoneFormData, code: e.target.value })}
+              sx={{ mb: 2 }}
+            />
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Area Type</InputLabel>
+              <Select
+                value={zoneFormData.area_type}
+                onChange={(e) => setZoneFormData({ ...zoneFormData, area_type: e.target.value as Zone['area_type'] })}
+                label="Area Type"
+              >
+                <MenuItem value="extraction">Extraction</MenuItem>
+                <MenuItem value="processing">Processing</MenuItem>
+                <MenuItem value="storage">Storage</MenuItem>
+                <MenuItem value="maintenance">Maintenance</MenuItem>
+                <MenuItem value="office">Office</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Risk Level</InputLabel>
+              <Select
+                value={zoneFormData.risk_level}
+                onChange={(e) => setZoneFormData({ ...zoneFormData, risk_level: e.target.value as Zone['risk_level'] })}
+                label="Risk Level"
+              >
+                <MenuItem value="low">Low</MenuItem>
+                <MenuItem value="medium">Medium</MenuItem>
+                <MenuItem value="high">High</MenuItem>
+                <MenuItem value="critical">Critical</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              fullWidth
+              label="Description"
+              value={zoneFormData.description}
+              onChange={(e) => setZoneFormData({ ...zoneFormData, description: e.target.value })}
+              multiline
+              rows={4}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              fullWidth
+              label="Max Occupancy"
+              type="number"
+              value={zoneFormData.max_occupancy}
+              onChange={(e) => setZoneFormData({ ...zoneFormData, max_occupancy: parseInt(e.target.value) })}
+              sx={{ mb: 2 }}
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={zoneFormData.requires_certification}
+                  onChange={(e) => setZoneFormData({ ...zoneFormData, requires_certification: e.target.checked })}
+                />
+              }
+              label="Requires Certification"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseZoneDialog}>Cancel</Button>
+          <Button
+            onClick={handleZoneSubmit}
+            variant="contained"
+            sx={{
+              borderRadius: '8px',
+              background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+            }}
+          >
+            {selectedZone ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>

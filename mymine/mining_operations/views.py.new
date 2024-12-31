@@ -1,0 +1,17 @@
+from django.shortcuts import render
+from rest_framework import viewsets, status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from datetime import datetime, timedelta
+from .models import (
+    SafetyIncident, Department, Zone, EnergyUsage, LaborMetrics,
+    ExplosivesUsage, GoldProduction, ChemicalsUsage
+)
+from .serializers import (
+    SafetyIncidentSerializer, DepartmentSerializer, ZoneSerializer,
+    EnergyUsageSerializer, LaborMetricsSerializer, ExplosivesUsageSerializer,
+    GoldProductionSerializer, ChemicalsUsageSerializer
+)
+
+# All the existing functions from the original file...
+# (Copy all functions from the original file except remove the last @api_view decorator)

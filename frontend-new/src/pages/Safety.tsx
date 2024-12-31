@@ -64,6 +64,8 @@ import { useCompanySettings } from '../contexts/CompanySettingsContext';
 import DateFilter from '../components/common/DateFilter';
 import { format, subDays } from 'date-fns';
 import { safetyService, SafetyIncident } from '../services/api';
+import { departmentService } from '../services/api';
+import { zoneService } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import Papa from 'papaparse';
 import jsPDF from 'jspdf';
@@ -93,7 +95,7 @@ const INITIAL_FORM_DATA: FormData = {
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 const SEVERITY_OPTIONS = ['low', 'medium', 'high', 'critical'];
-const INCIDENT_TYPES = ['injury', 'near_miss', 'property_damage', 'environmental', 'other'];
+const INCIDENT_TYPES = ['injury', 'near_miss', 'property_damage', 'environmental', 'other'] as const;
 const INVESTIGATION_STATUS = ['pending', 'in_progress', 'completed', 'closed'];
 
 const getSeverityColor = (severity: string) => {
@@ -194,22 +196,34 @@ const Safety: React.FC = () => {
   };
 
   const createMutation = useMutation({
-    mutationFn: (data: FormData) => safetyService.createIncident(data),
+    mutationFn: async ({ data }: { data: Partial<SafetyIncident> }) => {
+      console.log('Creating safety incident with data:', data);
+      const response = await safetyService.createIncident(data);
+      console.log('Create response:', response);
+      return response;
+    },
     onSuccess: () => {
+      console.log('Successfully created safety incident');
       queryClient.invalidateQueries({ queryKey: ['safetyIncidents'] });
       setOpenDialog(false);
       setFormData(INITIAL_FORM_DATA);
       setFormError(null);
     },
     onError: (error: any) => {
+      console.error('Error creating safety incident:', error.response?.data || error);
       setFormError(error.response?.data?.error || 'Failed to create incident record');
     }
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<SafetyIncident> }) => 
-      safetyService.updateIncident(id, data),
+    mutationFn: async ({ id, data }: { id: number; data: Partial<SafetyIncident> }) => {
+      console.log('Updating safety incident:', id, 'with data:', data);
+      const response = await safetyService.updateIncident(id, data);
+      console.log('Update response:', response);
+      return response;
+    },
     onSuccess: () => {
+      console.log('Successfully updated safety incident');
       queryClient.invalidateQueries({ queryKey: ['safetyIncidents'] });
       setOpenDialog(false);
       setSelectedRecord(null);
@@ -217,33 +231,50 @@ const Safety: React.FC = () => {
       setFormError(null);
     },
     onError: (error: any) => {
+      console.error('Error updating safety incident:', error.response?.data || error);
       setFormError(error.response?.data?.error || 'Failed to update incident record');
     }
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => safetyService.deleteIncident(id),
+    mutationFn: async ({ id }: { id: number }) => {
+      console.log('Deleting safety incident:', id);
+      const response = await safetyService.deleteIncident(id);
+      console.log('Delete response:', response);
+      return response;
+    },
     onSuccess: () => {
+      console.log('Successfully deleted safety incident');
       queryClient.invalidateQueries({ queryKey: ['safetyIncidents'] });
       setSelectedRecord(null);
     },
     onError: (error: any) => {
-      console.error('Error deleting incident record:', error);
+      console.error('Error deleting safety incident:', error.response?.data || error);
     }
   });
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setFormError(null);
+    console.log('Form submitted with data:', formData);
+
+    // Validate incident type
+    if (!INCIDENT_TYPES.includes(formData.incident_type as any)) {
+      console.error('Invalid incident type:', formData.incident_type);
+      setFormError('Invalid incident type selected');
+      return;
+    }
 
     try {
       if (selectedRecord) {
+        console.log('Updating existing record:', selectedRecord.id);
         await updateMutation.mutateAsync({ 
           id: selectedRecord.id, 
           data: formData 
         });
       } else {
-        await createMutation.mutateAsync(formData);
+        console.log('Creating new record');
+        await createMutation.mutateAsync({ data: formData });
       }
     } catch (error) {
       console.error('Form submission error:', error);
@@ -253,7 +284,7 @@ const Safety: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this incident record?')) {
       try {
-        await deleteMutation.mutateAsync(id);
+        await deleteMutation.mutateAsync({ id });
       } catch (error) {
         console.error('Delete error:', error);
       }
@@ -261,10 +292,18 @@ const Safety: React.FC = () => {
   };
 
   const handleEdit = (record: SafetyIncident) => {
+    console.log('Editing record:', record);
     setSelectedRecord(record);
+    // Transform invalid incident type to a valid one
+    const incidentType = INCIDENT_TYPES.includes(record.incident_type as any) 
+      ? record.incident_type 
+      : record.incident_type === 'equipment_failure' ? 'property_damage' : 'other';
+    
+    console.log('Transformed incident type:', record.incident_type, '->', incidentType);
+      
     setFormData({
       date: record.date,
-      incident_type: record.incident_type,
+      incident_type: incidentType,
       severity: record.severity,
       description: record.description,
       department: record.department,
@@ -284,14 +323,26 @@ const Safety: React.FC = () => {
     setExportAnchorEl(null);
   };
 
+  const { data: exportData } = useQuery({
+    queryKey: ['safetyExport', dateRange],
+    queryFn: () => safetyService.getAllSafetyIncidents({
+      from_date: format(dateRange.startDate || subDays(new Date(), 30), 'yyyy-MM-dd'),
+      to_date: format(dateRange.endDate || new Date(), 'yyyy-MM-dd')
+    }),
+    enabled: false // Only run when exporting
+  });
+
   const handleExportCSV = async () => {
     setExportLoading(true);
     console.log('Exporting to CSV...');
 
     try {
-      const exportData = await safetyService.getAllSafetyIncidents({
-        from_date: format(dateRange.startDate || subDays(new Date(), 30), 'yyyy-MM-dd'),
-        to_date: format(dateRange.endDate || new Date(), 'yyyy-MM-dd')
+      await queryClient.prefetchQuery({
+        queryKey: ['safetyExport', dateRange],
+        queryFn: () => safetyService.getAllSafetyIncidents({
+          from_date: format(dateRange.startDate || subDays(new Date(), 30), 'yyyy-MM-dd'),
+          to_date: format(dateRange.endDate || new Date(), 'yyyy-MM-dd')
+        })
       });
 
       console.log('Export data received:', {
@@ -338,9 +389,12 @@ const Safety: React.FC = () => {
     console.log('Exporting to PDF with company settings:', companySettings);
 
     try {
-      const exportData = await safetyService.getAllSafetyIncidents({
-        from_date: format(dateRange.startDate || subDays(new Date(), 30), 'yyyy-MM-dd'),
-        to_date: format(dateRange.endDate || new Date(), 'yyyy-MM-dd')
+      await queryClient.prefetchQuery({
+        queryKey: ['safetyExport', dateRange],
+        queryFn: () => safetyService.getAllSafetyIncidents({
+          from_date: format(dateRange.startDate || subDays(new Date(), 30), 'yyyy-MM-dd'),
+          to_date: format(dateRange.endDate || new Date(), 'yyyy-MM-dd')
+        })
       });
 
       console.log('Export data received:', {
@@ -485,6 +539,20 @@ const Safety: React.FC = () => {
       handleExportClose();
     }
   };
+
+  // Fetch departments
+  const { data: departments, isLoading: departmentsLoading } = useQuery({
+    queryKey: ['departments'],
+    queryFn: () => departmentService.getDepartments(),
+    staleTime: 300000, // 5 minutes
+  });
+
+  // Fetch zones
+  const { data: zones, isLoading: zonesLoading } = useQuery({
+    queryKey: ['zones'],
+    queryFn: () => zoneService.getZones(),
+    staleTime: 300000, // 5 minutes
+  });
 
   // Sort function
   const sortData = (data: SafetyIncident[]) => {
@@ -1005,36 +1073,68 @@ const Safety: React.FC = () => {
                   </FormControl>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Department"
-                    value={formData.department || ''}
-                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    InputProps={{
-                      startAdornment: <BusinessIcon sx={{ mr: 1, color: 'text.secondary' }} />,
-                    }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
+                  <FormControl fullWidth>
+                    <InputLabel>Department</InputLabel>
+                    <Select
+                      value={formData.department || ''}
+                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                      label="Department"
+                      sx={{
                         borderRadius: '12px',
-                      },
-                    }}
-                  />
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderRadius: '12px',
+                        },
+                      }}
+                    >
+                      <MenuItem value="">
+                        <em>None</em>
+                      </MenuItem>
+                      {departmentsLoading ? (
+                        <MenuItem value="">
+                          <em>Loading...</em>
+                        </MenuItem>
+                      ) : departments?.map((dept) => (
+                        <MenuItem key={dept.id} value={dept.name}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <BusinessIcon sx={{ fontSize: 20 }} />
+                            {dept.name}
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Zone"
-                    value={formData.zone || ''}
-                    onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
-                    InputProps={{
-                      startAdornment: <LocationIcon sx={{ mr: 1, color: 'text.secondary' }} />,
-                    }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
+                  <FormControl fullWidth>
+                    <InputLabel>Zone</InputLabel>
+                    <Select
+                      value={formData.zone || ''}
+                      onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
+                      label="Zone"
+                      sx={{
                         borderRadius: '12px',
-                      },
-                    }}
-                  />
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderRadius: '12px',
+                        },
+                      }}
+                    >
+                      <MenuItem value="">
+                        <em>None</em>
+                      </MenuItem>
+                      {zonesLoading ? (
+                        <MenuItem value="">
+                          <em>Loading...</em>
+                        </MenuItem>
+                      ) : zones?.map((zone) => (
+                        <MenuItem key={zone.id} value={zone.name}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <LocationIcon sx={{ fontSize: 20 }} />
+                            {zone.name} - {zone.code}
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
                 <Grid item xs={12}>
                   <TextField

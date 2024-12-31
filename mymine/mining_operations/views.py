@@ -4,10 +4,15 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from datetime import datetime, timedelta
 from decimal import Decimal
-from .models import DailyProductionLog, EnergyUsage, SafetyIncident, MiningDepartment
+from django.utils import timezone
+import pytz
+from .models import DailyProductionLog, EnergyUsage, SafetyIncident, MiningDepartment, Zone
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Set the South African timezone
+sa_tz = pytz.timezone('Africa/Johannesburg')
 
 @api_view(['GET'])
 def dashboard_data(request):
@@ -575,194 +580,186 @@ def chemicals_usage(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-@api_view(['GET'])
+@api_view(['GET', 'PUT'])
 def gold_production_detail(request, id):
-    """Get detailed gold production data for a specific record."""
+    """Get or update detailed gold production data for a specific record."""
     try:
-        # Placeholder data
-        data = {
-            "id": id,
-            "date": "2024-12-23",
-            "production": 1.8,
-            "value": 108000.00,
-            "recovery_rate": 92.0,
-            "ore_grade": 2.5,
-            "throughput": 1000.0,
-            "notes": "Normal operation"
-        }
-        return Response(data)
+        if request.method == 'GET':
+            # Placeholder data
+            data = {
+                "id": id,
+                "date": "2024-12-23",
+                "production": 1.8,
+                "value": 108000.00,
+                "recovery_rate": 92.0,
+                "ore_grade": 2.5,
+                "throughput": 1000.0,
+                "notes": "Normal operation"
+            }
+            return Response(data)
+        elif request.method == 'PUT':
+            data = request.data
+            # Here you would update the gold production in your database
+            # For now we'll just return the data that was sent
+            return Response(data)
     except Exception as e:
         return Response(
-            {"error": f"Error fetching gold production detail: {str(e)}"},
+            {"error": f"Error handling gold production detail: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-@api_view(['GET'])
+@api_view(['GET', 'PUT'])
 def chemicals_usage_detail(request, id):
-    """Get detailed chemicals usage data for a specific record."""
+    """Get or update detailed chemicals usage data for a specific record."""
     try:
-        # Placeholder data for a specific record
-        data = {
-            "id": id,
-            "date": "2024-12-23",
-            "cyanide_kg": 1200,
-            "lime_kg": 2500,
-            "activated_carbon_kg": 800,
-            "flocculant_kg": 150,
-            "cost": 45000,
-            "notes": "Normal consumption within expected ranges",
-            "operator": "John Smith",
-            "batch_numbers": {
-                "cyanide": "CN-2024-123",
-                "lime": "LM-2024-456",
-                "activated_carbon": "AC-2024-789",
-                "flocculant": "FL-2024-012"
-            },
-            "quality_checks": [
-                {
-                    "time": "08:00",
-                    "parameter": "pH",
-                    "value": 10.5,
-                    "status": "Normal"
+        if request.method == 'GET':
+            # Placeholder data for a specific record
+            data = {
+                "id": id,
+                "date": "2024-12-23",
+                "cyanide_kg": 1200,
+                "lime_kg": 2500,
+                "activated_carbon_kg": 800,
+                "flocculant_kg": 150,
+                "cost": 45000,
+                "notes": "Normal consumption within expected ranges",
+                "operator": "John Smith",
+                "batch_numbers": {
+                    "cyanide": "CN-2024-123",
+                    "lime": "LM-2024-456",
+                    "activated_carbon": "AC-2024-789",
+                    "flocculant": "FL-2024-012"
                 },
-                {
-                    "time": "14:00",
-                    "parameter": "pH",
-                    "value": 10.3,
-                    "status": "Normal"
-                }
-            ]
-        }
-        return Response(data)
+                "quality_checks": [
+                    {
+                        "time": "08:00",
+                        "parameter": "pH",
+                        "value": 10.5,
+                        "status": "Normal"
+                    },
+                    {
+                        "time": "14:00",
+                        "parameter": "pH",
+                        "value": 10.3,
+                        "status": "Normal"
+                    }
+                ]
+            }
+            return Response(data)
+        elif request.method == 'PUT':
+            data = request.data
+            # Here you would update the chemicals usage in your database
+            # For now we'll just return the data that was sent
+            return Response(data)
     except Exception as e:
         return Response(
-            {"error": f"Error fetching chemicals usage detail: {str(e)}"},
+            {"error": f"Error handling chemicals usage detail: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-@api_view(['GET'])
-def safety_incidents(request):
-    """Get safety incidents data with pagination."""
-    try:
-        from_date = request.GET.get('from_date')
-        to_date = request.GET.get('to_date')
-        offset = int(request.GET.get('offset', 0))
-        limit = int(request.GET.get('limit', 25))
-
-        # Convert dates to datetime objects
-        from_date = datetime.strptime(from_date, '%Y-%m-%d').date()
-        to_date = datetime.strptime(to_date, '%Y-%m-%d').date()
-
-        # Fetch actual safety incidents from the database
-        queryset = SafetyIncident.objects.filter(
-            date__date__range=[from_date, to_date]
-        ).order_by('-date')
-
-        total_count = queryset.count()
-        paginated_incidents = queryset[offset:offset + limit]
-
-        # Calculate summary statistics
-        severity_counts = {
-            'low': queryset.filter(severity='low').count(),
-            'medium': queryset.filter(severity='medium').count(),
-            'high': queryset.filter(severity='high').count(),
-            'critical': queryset.filter(severity='critical').count()
-        }
-
-        type_counts = {}
-        for incident_type in set(queryset.values_list('incident_type', flat=True)):
-            type_counts[incident_type] = queryset.filter(incident_type=incident_type).count()
-
-        department_stats = []
-        departments = set(queryset.values_list('department__name', flat=True))
-        for dept in departments:
-            dept_incidents = queryset.filter(department__name=dept)
-            department_stats.append({
-                'department': dept,
-                'total_incidents': dept_incidents.count(),
-                'severity_breakdown': {
-                    'low': dept_incidents.filter(severity='low').count(),
-                    'medium': dept_incidents.filter(severity='medium').count(),
-                    'high': dept_incidents.filter(severity='high').count(),
-                    'critical': dept_incidents.filter(severity='critical').count()
-                },
-                'type_breakdown': {
-                    incident_type: dept_incidents.filter(incident_type=incident_type).count()
-                    for incident_type in set(dept_incidents.values_list('incident_type', flat=True))
-                }
-            })
-
-        data = {
-            "summary": {
-                "total_incidents": total_count,
-                "severity_counts": severity_counts,
-                "type_counts": type_counts,
-                "trend_percentage": 0,  # You may want to calculate this based on historical data
-                "status_counts": {
-                    status: queryset.filter(investigation_status=status).count()
-                    for status in set(queryset.values_list('investigation_status', flat=True))
-                }
-            },
-            "total_incidents": total_count,
-            "severity_counts": severity_counts,
-            "type_counts": type_counts,
-            "department_stats": department_stats,
-            "recent_incidents": [
-                {
-                    "id": incident.id,
-                    "date": incident.date.strftime('%Y-%m-%d'),  # Fix date formatting
-                    "incident_type": incident.incident_type,
-                    "severity": incident.severity,
-                    "description": incident.description,
-                    "department": incident.department.name if incident.department else None,
-                    "zone": incident.zone.name if incident.zone else None,
-                    "investigation_status": incident.investigation_status,
-                    "corrective_actions": incident.corrective_actions
-                }
-                for incident in paginated_incidents
-            ]
-        }
-        return Response(data)
-    except Exception as e:
-        return Response(
-            {"error": f"Error fetching safety incidents: {str(e)}"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-@api_view(['GET'])
+@api_view(['GET', 'PUT'])
 def safety_incident_detail(request, id):
-    """Get detailed safety incident data."""
+    """Get or update detailed safety incident data."""
     try:
-        # Placeholder data
-        data = {
-            "id": id,
-            "date": "2024-12-23",
-            "type": "Near Miss",
-            "severity": "Low",
-            "location": "Processing Plant",
-            "description": "Slip hazard identified near leach tanks",
-            "status": "Resolved",
-            "actions_taken": "Area cleaned and warning signs installed",
-            "reported_by": "John Smith",
-            "investigation_details": "Investigation completed on 2024-12-23",
-            "corrective_actions": [
-                "Clean spill immediately",
-                "Install permanent non-slip matting",
-                "Update cleaning schedule"
-            ],
-            "witnesses": ["Jane Doe", "Mike Johnson"],
-            "attachments": [
-                {
-                    "name": "incident_photo.jpg",
-                    "url": "/media/safety/incidents/1/photo.jpg",
-                    "type": "image/jpeg"
-                }
-            ]
-        }
-        return Response(data)
+        incident = SafetyIncident.objects.get(id=id)
+        
+        if request.method == 'GET':
+            data = {
+                "id": incident.id,
+                "date": incident.date.strftime('%Y-%m-%d'),
+                "incident_type": incident.incident_type,
+                "severity": incident.severity,
+                "description": incident.description,
+                "department": incident.department.name if incident.department else None,
+                "zone": incident.zone.name if incident.zone else None,
+                "status": incident.investigation_status,
+                "actions_taken": incident.corrective_actions,
+                "reported_by": incident.reported_by.get_full_name() if incident.reported_by else None,
+                "investigation_details": incident.investigation_report,
+                "corrective_actions": incident.corrective_actions.split('\n') if incident.corrective_actions else [],
+                "witnesses": [emp.user.get_full_name() for emp in incident.employees_involved.all()]
+            }
+            return Response(data)
+        elif request.method == 'PUT':
+            # Update the incident fields
+            if 'date' in request.data:
+                # Parse the date and set it to noon (12:00) in South African time to avoid timezone issues
+                date = datetime.strptime(request.data['date'], '%Y-%m-%d')
+                date = date.replace(hour=12, minute=0, second=0)
+                incident.date = sa_tz.localize(date)
+            if 'incident_type' in request.data:
+                incident.incident_type = request.data['incident_type']
+            if 'severity' in request.data:
+                incident.severity = request.data['severity']
+            if 'description' in request.data:
+                incident.description = request.data['description']
+            
+            # Update department if provided
+            if 'department' in request.data:
+                try:
+                    department = MiningDepartment.objects.get(name=request.data['department'])
+                    incident.department = department
+                except MiningDepartment.DoesNotExist:
+                    pass
+                    
+            # Update zone if provided
+            if 'zone' in request.data:
+                try:
+                    zone = Zone.objects.get(name=request.data['zone'])
+                    incident.zone = zone
+                except Zone.DoesNotExist:
+                    pass
+                    
+            # Update other fields
+            if 'status' in request.data:
+                incident.investigation_status = request.data['status']
+            if 'actions_taken' in request.data:
+                incident.corrective_actions = request.data['actions_taken']
+            if 'investigation_details' in request.data:
+                incident.investigation_report = request.data['investigation_details']
+                
+            incident.save()
+            
+            # Return the updated data
+            return Response({
+                "id": incident.id,
+                "date": incident.date.astimezone(sa_tz).strftime('%Y-%m-%d'),
+                "incident_type": incident.incident_type,
+                "severity": incident.severity,
+                "description": incident.description,
+                "department": incident.department.name if incident.department else None,
+                "zone": incident.zone.name if incident.zone else None,
+                "status": incident.investigation_status,
+                "actions_taken": incident.corrective_actions,
+                "reported_by": incident.reported_by.get_full_name() if incident.reported_by else None,
+                "investigation_details": incident.investigation_report
+            })
+    except SafetyIncident.DoesNotExist:
+        return Response(
+            {"error": f"Safety incident with id {id} not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
     except Exception as e:
         return Response(
-            {"error": f"Error fetching safety incident detail: {str(e)}"},
+            {"error": f"Error handling safety incident detail: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['DELETE'])
+def delete_safety_incident(request, id):
+    """Delete a safety incident record."""
+    try:
+        incident = SafetyIncident.objects.get(id=id)
+        incident.delete()
+        return Response({"message": "Safety incident deleted successfully"})
+    except SafetyIncident.DoesNotExist:
+        return Response(
+            {"error": "Safety incident not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {"error": f"Error deleting safety incident: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
@@ -1094,3 +1091,273 @@ def delete_department(request, id):
     except Exception as e:
         logger.error(f"Error deleting department: {str(e)}")
         return Response({'error': 'Failed to delete department'}, status=500)
+
+@api_view(['POST'])
+def create_safety_incident(request):
+    """Create a new safety incident record."""
+    try:
+        data = request.data.copy()  # Make a mutable copy
+        # Convert string date to datetime
+        if isinstance(data.get('date'), str):
+            data['date'] = datetime.strptime(data['date'], '%Y-%m-%d')
+
+        # Get department if provided
+        department_name = data.pop('department', None)
+        if department_name:
+            try:
+                department = MiningDepartment.objects.get(name=department_name)
+                data['department'] = department
+            except MiningDepartment.DoesNotExist:
+                return Response(
+                    {"error": f"Department {department_name} not found"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Get zone if provided
+        zone_name = data.pop('zone', None)
+        if zone_name:
+            try:
+                from .models import Zone
+                zone = Zone.objects.get(name=zone_name)
+                data['zone'] = zone
+            except Zone.DoesNotExist:
+                return Response(
+                    {"error": f"Zone {zone_name} not found"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Create the incident
+        incident = SafetyIncident.objects.create(**data)
+        
+        # Return the created incident data
+        return Response({
+            "id": incident.id,
+            "date": incident.date.strftime('%Y-%m-%d'),
+            "incident_type": incident.incident_type,
+            "severity": incident.severity,
+            "description": incident.description,
+            "department": incident.department.name if incident.department else None,
+            "zone": incident.zone.name if incident.zone else None,
+            "investigation_status": incident.investigation_status,
+            "corrective_actions": incident.corrective_actions
+        }, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response(
+            {"error": f"Error creating safety incident: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['GET'])
+def list_zones(request):
+    """List all available zones."""
+    try:
+        zones = Zone.objects.all()
+        data = [{
+            'id': zone.id,
+            'name': zone.name,
+            'code': zone.code,
+            'area_type': zone.area_type,
+            'risk_level': zone.risk_level,
+            'description': zone.description,
+            'max_occupancy': zone.max_occupancy,
+            'requires_certification': zone.requires_certification,
+            'site': zone.site.name if zone.site else None
+        } for zone in zones]
+        return Response(data)
+    except Exception as e:
+        return Response(
+            {"error": f"Error fetching zones: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+def create_zone(request):
+    """Create a new zone."""
+    try:
+        data = request.data.copy()
+        
+        # Get site if provided, otherwise use the first site
+        site_name = data.pop('site', None)
+        if site_name:
+            site = MiningSite.objects.get(name=site_name)
+        else:
+            site = MiningSite.objects.first()
+        
+        if not site:
+            return Response(
+                {"error": "No mining site available"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        data['site'] = site
+        zone = Zone.objects.create(**data)
+        
+        return Response({
+            'id': zone.id,
+            'name': zone.name,
+            'code': zone.code,
+            'area_type': zone.area_type,
+            'risk_level': zone.risk_level,
+            'description': zone.description,
+            'max_occupancy': zone.max_occupancy,
+            'requires_certification': zone.requires_certification,
+            'site': zone.site.name
+        }, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response(
+            {"error": f"Error creating zone: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['PUT'])
+def update_zone(request, id):
+    """Update a zone."""
+    try:
+        zone = Zone.objects.get(id=id)
+        data = request.data.copy()
+        
+        # Handle site update if provided
+        site_name = data.pop('site', None)
+        if site_name:
+            site = MiningSite.objects.get(name=site_name)
+            zone.site = site
+        
+        # Update other fields
+        for key, value in data.items():
+            setattr(zone, key, value)
+        
+        zone.save()
+        
+        return Response({
+            'id': zone.id,
+            'name': zone.name,
+            'code': zone.code,
+            'area_type': zone.area_type,
+            'risk_level': zone.risk_level,
+            'description': zone.description,
+            'max_occupancy': zone.max_occupancy,
+            'requires_certification': zone.requires_certification,
+            'site': zone.site.name
+        })
+    except Zone.DoesNotExist:
+        return Response(
+            {"error": "Zone not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {"error": f"Error updating zone: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['DELETE'])
+def delete_zone(request, id):
+    """Delete a zone."""
+    try:
+        zone = Zone.objects.get(id=id)
+        zone.delete()
+        return Response({"message": "Zone deleted successfully"})
+    except Zone.DoesNotExist:
+        return Response(
+            {"error": "Zone not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {"error": f"Error deleting zone: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['GET'])
+def safety_incidents(request):
+    """Get safety incidents data with pagination."""
+    try:
+        from_date = request.GET.get('from_date')
+        to_date = request.GET.get('to_date')
+        offset = int(request.GET.get('offset', 0))
+        limit = int(request.GET.get('limit', 25))
+
+        # Convert dates to datetime objects with South African timezone
+        from_date = datetime.strptime(from_date, '%Y-%m-%d')
+        from_date = from_date.replace(hour=0, minute=0, second=0)
+        from_date = sa_tz.localize(from_date)
+        
+        to_date = datetime.strptime(to_date, '%Y-%m-%d')
+        to_date = to_date.replace(hour=23, minute=59, second=59)
+        to_date = sa_tz.localize(to_date)
+
+        # Fetch actual safety incidents from the database
+        queryset = SafetyIncident.objects.filter(
+            date__range=[from_date, to_date]
+        ).order_by('-date')
+
+        total_count = queryset.count()
+        paginated_incidents = queryset[offset:offset + limit]
+
+        # Calculate summary statistics
+        severity_counts = {
+            'low': queryset.filter(severity='low').count(),
+            'medium': queryset.filter(severity='medium').count(),
+            'high': queryset.filter(severity='high').count(),
+            'critical': queryset.filter(severity='critical').count()
+        }
+
+        type_counts = {}
+        for incident_type in set(queryset.values_list('incident_type', flat=True)):
+            type_counts[incident_type] = queryset.filter(incident_type=incident_type).count()
+
+        department_stats = []
+        departments = set(queryset.values_list('department__name', flat=True))
+        for dept in departments:
+            dept_incidents = queryset.filter(department__name=dept)
+            department_stats.append({
+                'department': dept,
+                'total_incidents': dept_incidents.count(),
+                'severity_breakdown': {
+                    'low': dept_incidents.filter(severity='low').count(),
+                    'medium': dept_incidents.filter(severity='medium').count(),
+                    'high': dept_incidents.filter(severity='high').count(),
+                    'critical': dept_incidents.filter(severity='critical').count()
+                },
+                'type_breakdown': {
+                    incident_type: dept_incidents.filter(incident_type=incident_type).count()
+                    for incident_type in set(dept_incidents.values_list('incident_type', flat=True))
+                }
+            })
+
+        data = {
+            "summary": {
+                "total_incidents": total_count,
+                "severity_counts": severity_counts,
+                "type_counts": type_counts,
+                "trend_percentage": 0,  # You may want to calculate this based on historical data
+                "status_counts": {
+                    status: queryset.filter(investigation_status=status).count()
+                    for status in set(queryset.values_list('investigation_status', flat=True))
+                }
+            },
+            "total_incidents": total_count,
+            "severity_counts": severity_counts,
+            "type_counts": type_counts,
+            "department_stats": department_stats,
+            "recent_incidents": [
+                {
+                    "id": incident.id,
+                    "date": incident.date.strftime('%Y-%m-%d'),  # Fix date formatting
+                    "incident_type": incident.incident_type,
+                    "severity": incident.severity,
+                    "description": incident.description,
+                    "department": incident.department.name if incident.department else None,
+                    "zone": incident.zone.name if incident.zone else None,
+                    "investigation_status": incident.investigation_status,
+                    "corrective_actions": incident.corrective_actions
+                }
+                for incident in paginated_incidents
+            ]
+        }
+        return Response(data)
+    except Exception as e:
+        return Response(
+            {"error": f"Error fetching safety incidents: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

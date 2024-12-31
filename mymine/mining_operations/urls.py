@@ -30,7 +30,9 @@ urlpatterns = [
     
     # Safety endpoints
     path('safety/', views.safety_incidents, name='safety_incidents'),
+    path('safety/create/', views.create_safety_incident, name='create_safety_incident'),
     path('safety/<int:id>/', views.safety_incident_detail, name='safety_incident_detail'),
+    path('safety/<int:id>/delete/', views.delete_safety_incident, name='delete_safety_incident'),
     
     # Chemicals endpoints
     path('chemicals-usage/', views.chemicals_usage, name='chemicals_usage'),
@@ -41,4 +43,10 @@ urlpatterns = [
     path('departments/', views.create_department, name='create_department'),
     path('departments/<int:id>/', views.update_department, name='update_department'),
     path('departments/<int:id>/delete/', views.delete_department, name='delete_department'),
+    
+    # Zones endpoints
+    path('zones/', views.list_zones, name='list_zones'),
+    path('zones/create/', views.create_zone, name='create_zone'),
+    path('zones/<int:id>/', views.update_zone, name='update_zone'),
+    path('zones/<int:id>/delete/', views.delete_zone, name='delete_zone'),
 ]

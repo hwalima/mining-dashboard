@@ -794,7 +794,7 @@ export const safetyService = {
   // Create new safety incident
   createIncident: async (data: Omit<SafetyIncident, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const response = await api.post('/mining-operations/safety/', data);
+      const response = await api.post('/mining-operations/safety/create/', data);
       return response.data;
     } catch (error) {
       console.error('Error creating safety incident:', error);
@@ -805,6 +805,7 @@ export const safetyService = {
   // Update safety incident
   updateIncident: async (id: number, data: Partial<SafetyIncident>) => {
     try {
+      // Use PUT method with ID in URL, following REST convention
       const response = await api.put(`/mining-operations/safety/${id}/`, data);
       return response.data;
     } catch (error) {
@@ -1059,6 +1060,52 @@ export const fetchExplosivesData = async (params: DateRangeParams) => {
 
 export const fetchEquipmentStatus = async (params: DateRangeParams) => {
   return null;
+};
+
+export const zoneService = {
+  // Get all zones
+  getZones: async () => {
+    try {
+      const response = await api.get('/mining-operations/zones/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching zones:', error);
+      throw error;
+    }
+  },
+
+  // Create new zone
+  createZone: async (data: any) => {
+    try {
+      const response = await api.post('/mining-operations/zones/create/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating zone:', error);
+      throw error;
+    }
+  },
+
+  // Update zone
+  updateZone: async (id: number, data: any) => {
+    try {
+      const response = await api.put(`/mining-operations/zones/${id}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating zone:', error);
+      throw error;
+    }
+  },
+
+  // Delete zone
+  deleteZone: async (id: number) => {
+    try {
+      const response = await api.delete(`/mining-operations/zones/${id}/delete/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting zone:', error);
+      throw error;
+    }
+  },
 };
 
 export default api;

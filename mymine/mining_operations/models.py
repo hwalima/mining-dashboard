@@ -56,6 +56,7 @@ class MiningSite(models.Model):
     estimated_gold_reserves = models.DecimalField(max_digits=12, decimal_places=2, help_text='Estimated gold reserves in metric tons')
     geological_classification = models.CharField(max_length=100, blank=True, null=True)
     departments = models.ManyToManyField(MiningDepartment, related_name='sites')
+    description = models.TextField(blank=True, null=True)
     history = HistoricalRecords()
 
     def __str__(self):
@@ -237,7 +238,8 @@ class SafetyIncident(models.Model):
         ('equipment_failure', 'Equipment Failure'),
         ('personal_injury', 'Personal Injury'),
         ('environmental', 'Environmental'),
-        ('near_miss', 'Near Miss')
+        ('near_miss', 'Near Miss'),
+        ('property_damage', 'Property Damage')
     )
 
     date = models.DateTimeField()
